@@ -5,6 +5,9 @@ import { Grid, Card, CardContent, CardMedia, Chip, Button, Box, LinearProgress, 
 import Header from "./Header";
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { Favorite, FavoriteBorder } from '@mui/icons-material';
+import AuthPopup from './AuthPopup';
+import { useAuth } from './AuthContext';
+import { fetchUserFavorites, toggleUserFavorite } from './utils/favoritesApi';
 
 // API URL for the backend
 const BASE_URL = "http://localhost:5000/api";
@@ -23,8 +26,23 @@ function PokemonDetails() {
   const [moves, setMoves] = useState([]);
   const [displayedMoves, setDisplayedMoves] = useState(9);
   const [about, setAbout] = useState(""); 
-  const [favorites, setFavorites] = useState(JSON.parse(localStorage.getItem('favorites')) || {});
+  const [favorites, setFavorites] = useState({});
+  const [showAuthPopup, setShowAuthPopup] = useState(false);
+  const { isAuthenticated } = useAuth();
 
+  const fetchFavorites = async () => {
+    try {
+      const favoriteMap = await fetchUserFavorites();
+      setFavorites(favoriteMap);
+    } catch (error) {
+      console.error('Failed to fetch favorites:', error);
+      setFavorites({});
+    }
+  };
+
+  useEffect(() => {
+    fetchFavorites();
+  }, [isAuthenticated]);
 
   // Fetch Pokemon details from the backend
   useEffect(() => {
@@ -93,18 +111,20 @@ function PokemonDetails() {
     navigate('/', { state: { page: location.state?.fromPage|| 1 } });
   };
   
-  const toggleFavorite = (name) => {
-    const updatedFavorites = { ...favorites };
-    console.log("f before : ", favorites)
+  const toggleFavorite = async (name) => {
+    const token = localStorage.getItem('token');
 
-    if (favorites[name]) {
-      delete updatedFavorites[name]; // If it's currently a favorite, remove it.
-    } else {
-      updatedFavorites[name] = true; // If it's not a favorite, add it.
+    if (!token) {
+      setShowAuthPopup(true);
+      return;
     }
-    setFavorites(updatedFavorites);
-    console.log("f after : ", favorites)
-    localStorage.setItem('favorites', JSON.stringify(updatedFavorites));
+
+    try {
+      const updatedFavorites = await toggleUserFavorite(name, favorites);
+      setFavorites(updatedFavorites);
+    } catch (error) {
+      console.error('Failed to update favorite:', error);
+    }
   };
     
   const showMoreMoves = () => {
@@ -183,7 +203,7 @@ function PokemonDetails() {
                 }}
                 sx={{ position: 'absolute', top: 8, left: 8, color: "#C22E28"}}
               >
-                {favorites[pokemonName] ? <Favorite color="error" /> : <FavoriteBorder />}
+                {favorites[name] ? <Favorite color="error" /> : <FavoriteBorder />}
               </Button>
               <CardContent>
                 {/* Display Pokemon's Name */}
@@ -317,6 +337,12 @@ function PokemonDetails() {
           </Box>
         </div>
       </div>
+      {showAuthPopup && (
+        <AuthPopup
+          onClose={() => setShowAuthPopup(false)}
+          onSuccess={fetchFavorites}
+        />
+      )}
     </div>
   );
   

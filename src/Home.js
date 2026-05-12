@@ -26,6 +26,10 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
+import AuthPopup from './AuthPopup';
+import { useAuth } from './AuthContext';
+import { fetchUserFavorites, toggleUserFavorite } from './utils/favoritesApi';
+
 // API constants
 const BASE_URL = 'http://localhost:5000/api';
 const POKEMON_URL = `${BASE_URL}/pokemon`;
@@ -77,12 +81,26 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const [favorites, setFavorites] = useState(
-    JSON.parse(localStorage.getItem('favorites')) || {}
-  );
+  const [favorites, setFavorites] = useState({});
 
   const [selectedGen, setSelectedGen] = useState('all'); // 'all', 1–9, or 'fav'
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAuthPopup, setShowAuthPopup] = useState(false);
+  const { isAuthenticated } = useAuth();
+
+  const fetchFavorites = async () => {
+    try {
+      const favoriteMap = await fetchUserFavorites();
+      setFavorites(favoriteMap);
+    } catch (error) {
+      console.error('Failed to fetch favorites:', error);
+      setFavorites({});
+    }
+  };
+
+  useEffect(() => {
+    fetchFavorites();
+  }, [isAuthenticated]);
 
   // 1) Fetch all Pokémon names+URLs once, for universal search
   useEffect(() => {
@@ -185,17 +203,20 @@ export default function Home() {
     favorites,
   ]);
 
-  const toggleFavorite = (name) => {
-    setFavorites((prev) => {
-      const updated = { ...prev };
-      if (updated[name]) {
-        delete updated[name];
-      } else {
-        updated[name] = true;
-      }
-      localStorage.setItem('favorites', JSON.stringify(updated));
-      return updated;
-    });
+  const toggleFavorite = async (name) => {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+      setShowAuthPopup(true);
+      return;
+    }
+
+    try {
+      const updatedFavorites = await toggleUserFavorite(name, favorites);
+      setFavorites(updatedFavorites);
+    } catch (error) {
+      console.error('Failed to update favorite:', error);
+    }
   };
 
   // 6) Handle generation click: jump to page if not searching
@@ -443,6 +464,12 @@ export default function Home() {
             Page {currentPage} / {totalPages}
           </Typography>
         </Box>
+      )}
+      {showAuthPopup && (
+        <AuthPopup
+          onClose={() => setShowAuthPopup(false)}
+          onSuccess={fetchFavorites}
+        />
       )}
     </Box>
   );

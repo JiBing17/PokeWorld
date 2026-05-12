@@ -1,25 +1,60 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
-import { Card, CardMedia, CardContent, Typography, Grid, FormControl, InputLabel, Select, MenuItem, Box, IconButton, Button } from '@mui/material';
+import {
+  Card,
+  CardMedia,
+  CardContent,
+  Typography,
+  Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Box,
+  IconButton,
+  Button,
+} from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import Header from './Header';
 import pokeball from './static/pokeball.jpg';
+import { useAuth } from './AuthContext';
+import AuthPopup from './AuthPopup';
+import { fetchUserFavorites, removeUserFavorite } from './utils/favoritesApi';
 
 // Base URLs for API requests (backend)
 const BASE_URL = "http://localhost:5000/api";
 const POKEMON_URL = `${BASE_URL}/pokemon`;
 
 function Favorites() {
-  const [favorites, setFavorites] = useState(JSON.parse(localStorage.getItem('favorites')) || {});
+  const [favorites, setFavorites] = useState({});
   const [pokemonDetails, setPokemonDetails] = useState({});
   const [sortOrder, setSortOrder] = useState('recent');
+  const [showAuthPopup, setShowAuthPopup] = useState(false);
+
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate(); // Hook for navigation
+
+  // Fetch user's favorite Pokémon from MongoDB
+  const fetchFavorites = async () => {
+    try {
+      const favoriteMap = await fetchUserFavorites();
+      setFavorites(favoriteMap);
+    } catch (error) {
+      console.error('Failed to fetch favorites:', error);
+      setFavorites({});
+    }
+  };
+
+  useEffect(() => {
+    fetchFavorites();
+  }, [isAuthenticated]);
 
   // Fetch details for favorite Pokémon
   useEffect(() => {
     const fetchDetails = async () => {
       const details = {};
+
       for (const name in favorites) {
         try {
           const { data } = await axios.get(`${POKEMON_URL}/${name}`);
@@ -28,29 +63,45 @@ function Favorites() {
           console.error("Failed to fetch details for:", name, error);
         }
       }
+
       setPokemonDetails(details);
     };
+
     fetchDetails();
   }, [favorites]);
 
   // Remove a Pokémon from favorites
-  const removeFavorite = (name) => {
-    const updatedFavorites = { ...favorites };
-    delete updatedFavorites[name];
-    setFavorites(updatedFavorites);
-    localStorage.setItem('favorites', JSON.stringify(updatedFavorites));
+  const removeFavorite = async (name) => {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+      setShowAuthPopup(true);
+      return;
+    }
+
+    try {
+      await removeUserFavorite(name);
+
+      setFavorites((prev) => {
+        const updatedFavorites = { ...prev };
+        delete updatedFavorites[name];
+        return updatedFavorites;
+      });
+    } catch (error) {
+      console.error('Failed to remove favorite:', error);
+    }
   };
 
   // Sorting function based on user selection
   const handleSort = (a, b) => {
     if (sortOrder === 'asc') {
-      return a.localeCompare(b); 
+      return a.localeCompare(b);
     } else if (sortOrder === 'desc') {
-      return b.localeCompare(a); 
+      return b.localeCompare(a);
     }
-    return 0; 
+    return 0;
   };
-  
+
   const sortedFavorites = Object.keys(favorites).sort(handleSort);
 
   return (
@@ -65,7 +116,7 @@ function Favorites() {
           padding: "4rem 5%",
           gap: 4,
           marginTop: "4rem",
-          flexWrap: "wrap", 
+          flexWrap: "wrap",
         }}
       >
         {/* Left Section: Title, Description, and Image */}
@@ -86,11 +137,11 @@ function Favorites() {
           {/* Pokéball Image Below Text */}
           <CardMedia
             component="img"
-            image={pokeball} 
+            image={pokeball}
             alt="Pokéball illustration"
             sx={{
               width: "100%",
-              maxWidth: "350px", 
+              maxWidth: "350px",
               height: "auto",
               mx: "auto",
             }}
@@ -119,20 +170,38 @@ function Favorites() {
           {sortedFavorites.length === 0 ? (
             <Box sx={{ textAlign: "center", mt: 4 }}>
               <Typography variant="h6" color="textSecondary" sx={{ mb: 2 }}>
-                No favorites yet! Start adding Pokémon to your favorites.
+                {isAuthenticated
+                  ? 'No favorites yet! Start adding Pokémon to your favorites.'
+                  : 'Log in to view your saved favorites.'}
               </Typography>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => navigate("/")} // Navigate to home page
-                sx={{
-                  backgroundColor: "#C22E28",
-                  color: "white",
-                  "&:hover": { backgroundColor: "#B22222" },
-                }}
-              >
-                Go to Home
-              </Button>
+
+              {isAuthenticated ? (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => navigate("/")} // Navigate to home page
+                  sx={{
+                    backgroundColor: "#C22E28",
+                    color: "white",
+                    "&:hover": { backgroundColor: "#B22222" },
+                  }}
+                >
+                  Go to Home
+                </Button>
+              ) : (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => setShowAuthPopup(true)}
+                  sx={{
+                    backgroundColor: "#C22E28",
+                    color: "white",
+                    "&:hover": { backgroundColor: "#B22222" },
+                  }}
+                >
+                  Login / Sign Up
+                </Button>
+              )}
             </Box>
           ) : (
             // If favorites exist, display Pokémon grid
@@ -171,6 +240,7 @@ function Favorites() {
                         <Typography variant="h6" component="h2" gutterBottom align="center">
                           {name.toUpperCase()}
                         </Typography>
+
                         {/* Pokémon Image */}
                         {pokemonDetails[name] && (
                           <CardMedia
@@ -189,6 +259,13 @@ function Favorites() {
           )}
         </Box>
       </Box>
+
+      {showAuthPopup && (
+        <AuthPopup
+          onClose={() => setShowAuthPopup(false)}
+          onSuccess={fetchFavorites}
+        />
+      )}
     </div>
   );
 }
