@@ -16,13 +16,6 @@ function Header() {
     // Tool to navigate to different routes
     const navigate = useNavigate();
 
-    // Function to handle logout process
-    const handleLogout = () => {
-        // set authentication to false and goes back to login page
-        setIsAuthenticated(false);
-        navigate('/login');
-    };
-    
     return (
         <AppBar position="fixed" style={{ background: '#C22E28' }}>  
             <Toolbar>
@@ -59,10 +52,6 @@ function Header() {
                 {/** Contact Link **/}
                 <IconButton component={Link} to="/contact" color="inherit" sx={{ mr: 2 }}>
                     < HelpOutlineIcon />
-                </IconButton>
-                {/** Logout Link **/}
-                <IconButton color="inherit" onClick={handleLogout}>
-                    <ExitToAppIcon /> 
                 </IconButton>
                 
             </Toolbar>
