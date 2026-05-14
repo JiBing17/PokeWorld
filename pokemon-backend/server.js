@@ -18,6 +18,8 @@ app.use(bodyParser.json()); // Parses JSON request bodies (req.body is readable)
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const nodemailer = require('nodemailer');
+const rateLimit = require('express-rate-limit');
 
 const BASE_URL = 'https://pokeapi.co/api/v2'; // Base URL for the PokeAPI
 
@@ -247,6 +249,69 @@ app.post('/api/users/google', async (req, res) => {
   }
 });
 
+const contactLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 3,
+  message: 'Too many messages sent. Please try again later.',
+});
+
+app.post('/api/contact', contactLimiter, async (req, res) => {
+  const { name, email, subject, message, website } = req.body;
+
+  if (website) {
+    return res.status(400).send('Invalid request.');
+  }
+
+  if (!name || !email || !subject || !message) {
+    return res.status(400).send('All fields are required.');
+  }
+
+  if (name.length > 80) {
+    return res.status(400).send('Name is too long.');
+  }
+
+  if (email.length > 120) {
+    return res.status(400).send('Email is too long.');
+  }
+
+  if (subject.length > 120) {
+    return res.status(400).send('Subject is too long.');
+  }
+
+  if (message.length > 2000) {
+    return res.status(400).send('Message is too long.');
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: process.env.CONTACT_RECEIVER_EMAIL,
+      replyTo: email,
+      subject: `PokéWorld Contact: ${subject}`,
+      text: `
+Name: ${name}
+Email: ${email}
+Subject: ${subject}
+
+Message:
+${message}
+      `,
+    });
+
+    res.status(200).send('Message sent successfully.');
+  } catch (error) {
+    console.error('Contact email error:', error);
+    res.status(500).send('Failed to send message.');
+  }
+});
 
 // Start the server
 app.listen(PORT, () => {
