@@ -26,7 +26,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
-import AuthPopup from './AuthPopup';
+import Authpopup from './Authpopup';
 import { useAuth } from './AuthContext';
 import { fetchUserFavorites, toggleUserFavorite } from './utils/favoritesApi';
 
@@ -466,7 +466,7 @@ export default function Home() {
         </Box>
       )}
       {showAuthPopup && (
-        <AuthPopup
+        <Authpopup
           onClose={() => setShowAuthPopup(false)}
           onSuccess={fetchFavorites}
         />

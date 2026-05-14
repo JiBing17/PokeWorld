@@ -7,6 +7,7 @@ import {
     Typography,
 } from '@mui/material';
 import { useAuth } from './AuthContext';
+import { GoogleLogin } from '@react-oauth/google';
 
 function AuthPopup({ onClose, onSuccess }) {
     const { setIsAuthenticated } = useAuth();
@@ -16,10 +17,40 @@ function AuthPopup({ onClose, onSuccess }) {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
+    const handleGoogleSuccess = async (credentialResponse) => {
+        setError('');
+
+        if (!credentialResponse.credential) {
+            setError('Google credential was not received.');
+            return;
+        }
+
+        try {
+            const response = await axios.post('http://localhost:5000/api/users/google', {
+                credential: credentialResponse.credential,
+            });
+
+            localStorage.setItem('token', response.data.token);
+            localStorage.setItem('username', response.data.username);
+
+            setIsAuthenticated(true);
+
+            if (onSuccess) {
+                onSuccess();
+            }
+
+            onClose();
+        } catch (err) {
+            setError(err.response?.data || 'Google authentication failed.');
+        }
+    };
+
     const handleSubmit = async () => {
         setError('');
 
-        if (!username || !password) {
+        const cleanedUsername = username.trim();
+
+        if (!cleanedUsername || !password) {
             setError('Username and password are required.');
             return;
         }
@@ -27,13 +58,13 @@ function AuthPopup({ onClose, onSuccess }) {
         try {
             if (isSignup) {
                 await axios.post('http://localhost:5000/api/users/register', {
-                    username,
+                    username: cleanedUsername,
                     password,
                 });
             }
 
             const response = await axios.post('http://localhost:5000/api/users/login', {
-                username,
+                username: cleanedUsername,
                 password,
             });
 
@@ -63,6 +94,7 @@ function AuthPopup({ onClose, onSuccess }) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                px: 2,
             }}
         >
             <Box
@@ -71,8 +103,9 @@ function AuthPopup({ onClose, onSuccess }) {
                     bgcolor: 'white',
                     p: 3,
                     borderRadius: 2,
-                    width: '90%',
+                    width: '100%',
                     maxWidth: 360,
+                    boxShadow: 6,
                 }}
             >
                 <Typography variant="h6" sx={{ mb: 2 }}>
@@ -120,15 +153,67 @@ function AuthPopup({ onClose, onSuccess }) {
                 <Button
                     fullWidth
                     variant="text"
-                    onClick={() => setIsSignup(!isSignup)}
-                    sx={{ color: '#C22E28' }}
+                    onClick={() => {
+                        setIsSignup(!isSignup);
+                        setError('');
+                    }}
+                    sx={{
+                        color: '#C22E28',
+                        mb: 1,
+                    }}
                 >
                     {isSignup
                         ? 'Already have an account? Login'
                         : "Don't have an account? Sign up"}
                 </Button>
 
-                <Button fullWidth variant="text" onClick={onClose}>
+                <Box sx={{ display: 'flex', alignItems: 'center', my: 2 }}>
+                    <Box sx={{ flex: 1, height: '1px', bgcolor: '#ddd' }} />
+                    <Typography
+                        variant="body2"
+                        sx={{
+                            mx: 1.5,
+                            color: 'text.secondary',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        or
+                    </Typography>
+                    <Box sx={{ flex: 1, height: '1px', bgcolor: '#ddd' }} />
+                </Box>
+
+                <Box
+                    sx={{
+                        mb: 1.5,
+                        display: 'flex',
+                        justifyContent: 'center',
+                        width: '100%',
+                    }}
+                >
+                    <GoogleLogin
+                        onSuccess={handleGoogleSuccess}
+                        onError={() => setError('Google login failed.')}
+                        theme="outline"
+                        size="large"
+                        shape="rectangular"
+                        text={isSignup ? 'signup_with' : 'signin_with'}
+                        logo_alignment="left"
+                        width="312"
+                    />
+                </Box>
+
+                <Button
+                    fullWidth
+                    variant="text"
+                    onClick={onClose}
+                    sx={{
+                        mt: 1,
+                        color: 'text.secondary',
+                        '&:hover': {
+                            bgcolor: 'rgba(0, 0, 0, 0.04)',
+                        },
+                    }}
+                >
                     Cancel
                 </Button>
             </Box>

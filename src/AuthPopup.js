@@ -7,6 +7,7 @@ import {
     Typography,
 } from '@mui/material';
 import { useAuth } from './AuthContext';
+import { GoogleLogin } from '@react-oauth/google';
 
 function AuthPopup({ onClose, onSuccess }) {
     const { setIsAuthenticated } = useAuth();
@@ -16,10 +17,40 @@ function AuthPopup({ onClose, onSuccess }) {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
+    const handleGoogleSuccess = async (credentialResponse) => {
+        setError('');
+
+        if (!credentialResponse.credential) {
+            setError('Google credential was not received.');
+            return;
+        }
+
+        try {
+            const response = await axios.post('http://localhost:5000/api/users/google', {
+                credential: credentialResponse.credential,
+            });
+
+            localStorage.setItem('token', response.data.token);
+            localStorage.setItem('username', response.data.username);
+
+            setIsAuthenticated(true);
+
+            if (onSuccess) {
+                onSuccess();
+            }
+
+            onClose();
+        } catch (err) {
+            setError(err.response?.data || 'Google authentication failed.');
+        }
+    };
+
     const handleSubmit = async () => {
         setError('');
 
-        if (!username || !password) {
+        const cleanedUsername = username.trim();
+
+        if (!cleanedUsername || !password) {
             setError('Username and password are required.');
             return;
         }
@@ -27,13 +58,13 @@ function AuthPopup({ onClose, onSuccess }) {
         try {
             if (isSignup) {
                 await axios.post('http://localhost:5000/api/users/register', {
-                    username,
+                    username: cleanedUsername,
                     password,
                 });
             }
 
             const response = await axios.post('http://localhost:5000/api/users/login', {
-                username,
+                username: cleanedUsername,
                 password,
             });
 
@@ -72,12 +103,33 @@ function AuthPopup({ onClose, onSuccess }) {
                     p: 3,
                     borderRadius: 2,
                     width: '90%',
-                    maxWidth: 360,
+                    maxWidth: 420,
                 }}
             >
                 <Typography variant="h6" sx={{ mb: 2 }}>
                     {isSignup ? 'Create Account' : 'Login'}
                 </Typography>
+
+                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
+                    <GoogleLogin
+                        onSuccess={handleGoogleSuccess}
+                        onError={() => setError('Google login failed.')}
+                        theme="outline"
+                        size="large"
+                        shape="rectangular"
+                        text={isSignup ? 'signup_with' : 'signin_with'}
+                        logo_alignment="left"
+                        width="360"
+                    />
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Box sx={{ flex: 1, height: '1px', bgcolor: '#ddd' }} />
+                    <Typography variant="body2" sx={{ mx: 1, color: 'text.secondary' }}>
+                        or use username and password
+                    </Typography>
+                    <Box sx={{ flex: 1, height: '1px', bgcolor: '#ddd' }} />
+                </Box>
 
                 <TextField
                     fullWidth
@@ -120,7 +172,10 @@ function AuthPopup({ onClose, onSuccess }) {
                 <Button
                     fullWidth
                     variant="text"
-                    onClick={() => setIsSignup(!isSignup)}
+                    onClick={() => {
+                        setIsSignup(!isSignup);
+                        setError('');
+                    }}
                     sx={{ color: '#C22E28' }}
                 >
                     {isSignup

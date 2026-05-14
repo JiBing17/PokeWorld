@@ -5,7 +5,7 @@ import { Grid, Card, CardContent, CardMedia, Chip, Button, Box, LinearProgress, 
 import Header from "./Header";
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { Favorite, FavoriteBorder } from '@mui/icons-material';
-import AuthPopup from './AuthPopup';
+import Authpopup from './Authpopup';
 import { useAuth } from './AuthContext';
 import { fetchUserFavorites, toggleUserFavorite } from './utils/favoritesApi';
 
@@ -338,7 +338,7 @@ function PokemonDetails() {
         </div>
       </div>
       {showAuthPopup && (
-        <AuthPopup
+        <Authpopup
           onClose={() => setShowAuthPopup(false)}
           onSuccess={fetchFavorites}
         />

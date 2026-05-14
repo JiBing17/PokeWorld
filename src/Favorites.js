@@ -19,7 +19,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import Header from './Header';
 import pokeball from './static/pokeball.jpg';
 import { useAuth } from './AuthContext';
-import AuthPopup from './AuthPopup';
+import Authpopup from './Authpopup';
 import { fetchUserFavorites, removeUserFavorite } from './utils/favoritesApi';
 
 // Base URLs for API requests (backend)
@@ -261,7 +261,7 @@ function Favorites() {
       </Box>
 
       {showAuthPopup && (
-        <AuthPopup
+        <Authpopup
           onClose={() => setShowAuthPopup(false)}
           onSuccess={fetchFavorites}
         />

@@ -14,7 +14,10 @@ const PORT = process.env.PORT || 5000; // Define the port number
 
 app.use(cors()); // Allows communication between one domain to another (front-end to back-end)
 app.use(bodyParser.json()); // Parses JSON request bodies (req.body is readable)
+
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const BASE_URL = 'https://pokeapi.co/api/v2'; // Base URL for the PokeAPI
 
@@ -29,7 +32,12 @@ function authenticateUser(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.username = decoded.username;
+
+    req.user = {
+      username: decoded.username,
+      email: decoded.email,
+    };
+
     next();
   } catch (error) {
     res.status(401).send('Invalid or expired token');
@@ -116,17 +124,20 @@ app.get('/api/pokemon/:name', async (req, res) => {
   }
 });
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`); 
-});
-
 app.get('/api/users/favorites', authenticateUser, async (req, res) => {
   try {
     const db = await connectToDatabase();
     const collection = db.collection('users');
 
-    const user = await collection.findOne({ username: req.username });
+    const userQuery = req.user.email
+      ? { email: req.user.email }
+      : { username: req.user.username };
+
+    const user = await collection.findOne(userQuery);
+
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
 
     res.json(user.favorites || []);
   } catch (error) {
@@ -146,7 +157,7 @@ app.post('/api/users/favorites', authenticateUser, async (req, res) => {
     const collection = db.collection('users');
 
     await collection.updateOne(
-      { username: req.username },
+      req.user.email ? { email: req.user.email } : { username: req.user.username },
       { $addToSet: { favorites: pokemonName } }
     );
 
@@ -164,7 +175,7 @@ app.delete('/api/users/favorites/:pokemonName', authenticateUser, async (req, re
     const collection = db.collection('users');
 
     await collection.updateOne(
-      { username: req.username },
+      req.user.email ? { email: req.user.email } : { username: req.user.username },
       { $pull: { favorites: pokemonName } }
     );
 
@@ -172,4 +183,72 @@ app.delete('/api/users/favorites/:pokemonName', authenticateUser, async (req, re
   } catch (error) {
     res.status(500).send('Failed to remove favorite');
   }
+});
+
+// Route to handle Google login/signup
+app.post('/api/users/google', async (req, res) => {
+  const { credential } = req.body;
+
+  if (!credential) {
+    return res.status(400).send('Google credential is required');
+  }
+
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    const googleId = payload.sub;
+    const email = payload.email;
+    const username = payload.name || email;
+
+    const db = await connectToDatabase();
+    const collection = db.collection('users');
+
+    let user = await collection.findOne({
+      $or: [
+        { googleId },
+        { email }
+      ]
+    });
+
+    if (!user) {
+      await collection.insertOne({
+        username,
+        email,
+        googleId,
+        authProvider: 'google',
+        favorites: [],
+      });
+
+      user = await collection.findOne({ googleId });
+    }
+
+    const token = jwt.sign(
+      {
+        username: user.username,
+        email: user.email,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      message: 'Google login successful',
+      token,
+      username: user.username,
+    });
+  } catch (error) {
+    console.error('Google auth error:', error);
+    res.status(401).send('Google authentication failed');
+  }
+});
+
+
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`); 
 });
