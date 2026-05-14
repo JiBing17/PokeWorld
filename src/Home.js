@@ -1,15 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import {
-  AppBar,
-  Toolbar,
   Typography,
   TextField,
   InputAdornment,
   Grid,
   IconButton,
   Chip,
-  Button,
   CircularProgress,
   Box,
   Stack,
@@ -19,55 +16,21 @@ import {
   NavigateBefore,
   NavigateNext,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import Authpopup from './Authpopup';
 import { useAuth } from './AuthContext';
 import { fetchUserFavorites, toggleUserFavorite } from './utils/favoritesApi';
 import PokemonCard from './PokemonCard';
-
-// API constants
-const BASE_URL = 'http://localhost:5000/api';
-const POKEMON_URL = `${BASE_URL}/pokemon`;
-const PLACEHOLDER =
-  'https://upload.wikimedia.org/wikipedia/commons/b/b1/Loading_icon.gif';
-
-// Helpers
-const getIdFromUrl = (url) => url.split('/').filter(Boolean).pop();
-const getSpriteUrl = (url) =>
-  `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${getIdFromUrl(
-    url
-  )}.png`;
-const getGeneration = (pokedexId) => {
-  const id = Number(pokedexId);
-  if (id >= 1 && id <= 151) return 1;
-  if (id >= 152 && id <= 251) return 2;
-  if (id >= 252 && id <= 386) return 3;
-  if (id >= 387 && id <= 493) return 4;
-  if (id >= 494 && id <= 649) return 5;
-  if (id >= 650 && id <= 721) return 6;
-  if (id >= 722 && id <= 809) return 7;
-  if (id >= 810 && id <= 898) return 8;
-  if (id >= 899 && id <= 1010) return 9;
-  return 0;
-};
-
-// Generation options and their first Pokédex IDs
-const ALL_GEN_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-const FIRST_ID_BY_GEN = {
-  1: 1,
-  2: 152,
-  3: 252,
-  4: 387,
-  5: 494,
-  6: 650,
-  7: 722,
-  8: 810,
-  9: 899,
-};
+import { enrichPokemonList } from './utils/pokemonUtils';
+import {
+  POKEMON_URL,
+  PAGE_SIZE,
+  SEARCH_RESULT_LIMIT,
+  ALL_GEN_OPTIONS,
+  FIRST_ID_BY_GEN,
+} from './utils/constants';
 
 export default function Home() {
-  const navigate = useNavigate();
   const [allPokemonList, setAllPokemonList] = useState([]); // name + url for all ~1118
   const [pokemonData, setPokemonData] = useState([]); // paginated results for current page
   const [enrichedPagePokemon, setEnrichedPagePokemon] = useState([]); // enriched for current page
@@ -76,7 +39,7 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [favorites, setFavorites] = useState({});
-  const [selectedGen, setSelectedGen] = useState('all'); // 'all', 1–9, or 'fav'
+  const [selectedGen, setSelectedGen] = useState('all'); // 'all' or 1–9
   const [searchQuery, setSearchQuery] = useState('');
   const [showAuthPopup, setShowAuthPopup] = useState(false);
   const { isAuthenticated } = useAuth();
@@ -115,10 +78,10 @@ export default function Home() {
       setIsLoading(true);
       setError(null);
       try {
-        const res = await axios.get(`${POKEMON_URL}?page=${currentPage}&limit=48`);
+        const res = await axios.get(`${POKEMON_URL}?page=${currentPage}&limit=${PAGE_SIZE}`);
         const results = res.data.results;
         setPokemonData(results);
-        setTotalPages(Math.ceil(res.data.count / 48));
+        setTotalPages(Math.ceil(res.data.count / PAGE_SIZE));
       } catch (err) {
         setError(err);
       } finally {
@@ -131,42 +94,14 @@ export default function Home() {
   // 3) Enrich current page Pokémon with id, generation, spriteUrl, and types
   useEffect(() => {
     const enrichPagePokemon = async () => {
-      const enriched = await Promise.all(
-        pokemonData.map(async (p) => {
-          const id = getIdFromUrl(p.url);
-          const gen = getGeneration(id);
-
-          try {
-            const response = await axios.get(`${POKEMON_URL}/${p.name}`);
-
-            return {
-              name: p.name,
-              url: p.url,
-              id: Number(id),
-              generation: gen,
-              spriteUrl: getSpriteUrl(p.url),
-              types: response.data.types,
-            };
-          } catch (error) {
-            console.error('Failed to fetch type for:', p.name, error);
-
-            return {
-              name: p.name,
-              url: p.url,
-              id: Number(id),
-              generation: gen,
-              spriteUrl: getSpriteUrl(p.url),
-              types: [],
-            };
-          }
-        })
-      );
-
+      const enriched = await enrichPokemonList(pokemonData);
       setEnrichedPagePokemon(enriched);
     };
 
     if (pokemonData.length > 0) {
       enrichPagePokemon();
+    } else {
+      setEnrichedPagePokemon([]);
     }
   }, [pokemonData]);
 
@@ -182,39 +117,9 @@ export default function Home() {
 
       const matches = allPokemonList
         .filter((p) => p.name.toLowerCase().includes(lower))
-        .slice(0, 60);
+        .slice(0, SEARCH_RESULT_LIMIT);
 
-      const enriched = await Promise.all(
-        matches.map(async (p) => {
-          const id = getIdFromUrl(p.url);
-          const gen = getGeneration(id);
-
-          try {
-            const response = await axios.get(`${POKEMON_URL}/${p.name}`);
-
-            return {
-              name: p.name,
-              url: p.url,
-              id: Number(id),
-              generation: gen,
-              spriteUrl: getSpriteUrl(p.url),
-              types: response.data.types,
-            };
-          } catch (error) {
-            console.error('Failed to fetch type for:', p.name, error);
-
-            return {
-              name: p.name,
-              url: p.url,
-              id: Number(id),
-              generation: gen,
-              spriteUrl: getSpriteUrl(p.url),
-              types: [],
-            };
-          }
-        })
-      );
-
+      const enriched = await enrichPokemonList(matches);
       setEnrichedSearchResults(enriched);
     };
 
@@ -274,7 +179,7 @@ export default function Home() {
         setSelectedGen(gen);
       } else {
         const firstId = FIRST_ID_BY_GEN[gen];
-        const targetPage = Math.ceil(firstId / 48);
+        const targetPage = Math.ceil(firstId / PAGE_SIZE);
         setSelectedGen(gen);
         setCurrentPage(targetPage);
       }

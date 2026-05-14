@@ -1,3 +1,26 @@
+export const BASE_URL = 'http://localhost:5000/api';
+export const POKEMON_URL = `${BASE_URL}/pokemon`;
+
+export const PLACEHOLDER_IMAGE =
+  'https://upload.wikimedia.org/wikipedia/commons/b/b1/Loading_icon.gif';
+
+export const PAGE_SIZE = 48;
+export const SEARCH_RESULT_LIMIT = 60;
+
+export const ALL_GEN_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+export const FIRST_ID_BY_GEN = {
+  1: 1,
+  2: 152,
+  3: 252,
+  4: 387,
+  5: 494,
+  6: 650,
+  7: 722,
+  8: 810,
+  9: 899,
+};
+
 export const typeColors = {
     normal: "#A8A77A",
     fire: "#EE8130",
