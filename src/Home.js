@@ -7,9 +7,6 @@ import {
   TextField,
   InputAdornment,
   Grid,
-  Card,
-  CardMedia,
-  CardContent,
   IconButton,
   Chip,
   Button,
@@ -19,8 +16,6 @@ import {
 } from '@mui/material';
 import {
   Search as SearchIcon,
-  Favorite,
-  FavoriteBorder,
   NavigateBefore,
   NavigateNext,
 } from '@mui/icons-material';
@@ -29,6 +24,7 @@ import Header from './Header';
 import Authpopup from './Authpopup';
 import { useAuth } from './AuthContext';
 import { fetchUserFavorites, toggleUserFavorite } from './utils/favoritesApi';
+import PokemonCard from './PokemonCard';
 
 // API constants
 const BASE_URL = 'http://localhost:5000/api';
@@ -77,16 +73,14 @@ export default function Home() {
   const [enrichedPagePokemon, setEnrichedPagePokemon] = useState([]); // enriched for current page
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-
   const [favorites, setFavorites] = useState({});
-
   const [selectedGen, setSelectedGen] = useState('all'); // 'all', 1–9, or 'fav'
   const [searchQuery, setSearchQuery] = useState('');
   const [showAuthPopup, setShowAuthPopup] = useState(false);
   const { isAuthenticated } = useAuth();
+  const [enrichedSearchResults, setEnrichedSearchResults] = useState([]);
 
   const fetchFavorites = async () => {
     try {
@@ -134,42 +128,97 @@ export default function Home() {
     fetchPage();
   }, [currentPage]);
 
-  // 3) Enrich current page Pokémon with id, generation, spriteUrl
+  // 3) Enrich current page Pokémon with id, generation, spriteUrl, and types
   useEffect(() => {
-    const enriched = pokemonData.map((p) => {
-      const id = getIdFromUrl(p.url);
-      const gen = getGeneration(id);
-      return {
-        name: p.name,
-        url: p.url,
-        id: Number(id),
-        generation: gen,
-        spriteUrl: getSpriteUrl(p.url),
-      };
-    });
-    setEnrichedPagePokemon(enriched);
+    const enrichPagePokemon = async () => {
+      const enriched = await Promise.all(
+        pokemonData.map(async (p) => {
+          const id = getIdFromUrl(p.url);
+          const gen = getGeneration(id);
+
+          try {
+            const response = await axios.get(`${POKEMON_URL}/${p.name}`);
+
+            return {
+              name: p.name,
+              url: p.url,
+              id: Number(id),
+              generation: gen,
+              spriteUrl: getSpriteUrl(p.url),
+              types: response.data.types,
+            };
+          } catch (error) {
+            console.error('Failed to fetch type for:', p.name, error);
+
+            return {
+              name: p.name,
+              url: p.url,
+              id: Number(id),
+              generation: gen,
+              spriteUrl: getSpriteUrl(p.url),
+              types: [],
+            };
+          }
+        })
+      );
+
+      setEnrichedPagePokemon(enriched);
+    };
+
+    if (pokemonData.length > 0) {
+      enrichPagePokemon();
+    }
   }, [pokemonData]);
 
   // 4) Build enrichedSearchResults when searchQuery changes
-  const enrichedSearchResults = useMemo(() => {
-    if (searchQuery.trim() === '') return [];
-    const lower = searchQuery.toLowerCase();
-    // Filter allPokemonList by name substring
-    const matches = allPokemonList.filter((p) =>
-      p.name.toLowerCase().includes(lower)
-    );
-    // Map each match to enriched object (id/generation/sprite)
-    return matches.map((p) => {
-      const id = getIdFromUrl(p.url);
-      const gen = getGeneration(id);
-      return {
-        name: p.name,
-        url: p.url,
-        id: Number(id),
-        generation: gen,
-        spriteUrl: getSpriteUrl(p.url),
-      };
-    });
+  useEffect(() => {
+    const enrichSearchResults = async () => {
+      if (searchQuery.trim() === '') {
+        setEnrichedSearchResults([]);
+        return;
+      }
+
+      const lower = searchQuery.toLowerCase();
+
+      const matches = allPokemonList
+        .filter((p) => p.name.toLowerCase().includes(lower))
+        .slice(0, 60);
+
+      const enriched = await Promise.all(
+        matches.map(async (p) => {
+          const id = getIdFromUrl(p.url);
+          const gen = getGeneration(id);
+
+          try {
+            const response = await axios.get(`${POKEMON_URL}/${p.name}`);
+
+            return {
+              name: p.name,
+              url: p.url,
+              id: Number(id),
+              generation: gen,
+              spriteUrl: getSpriteUrl(p.url),
+              types: response.data.types,
+            };
+          } catch (error) {
+            console.error('Failed to fetch type for:', p.name, error);
+
+            return {
+              name: p.name,
+              url: p.url,
+              id: Number(id),
+              generation: gen,
+              spriteUrl: getSpriteUrl(p.url),
+              types: [],
+            };
+          }
+        })
+      );
+
+      setEnrichedSearchResults(enriched);
+    };
+
+    enrichSearchResults();
   }, [searchQuery, allPokemonList]);
 
   // 5) Decide which list to display:
@@ -177,30 +226,27 @@ export default function Home() {
   //    - Else: take enrichedPagePokemon and apply selectedGen/favorites filter
   const dataToDisplay = useMemo(() => {
     if (searchQuery.trim() !== '') {
-      // 5a) If searching, filter by generation or favorites if needed
       let list = [...enrichedSearchResults];
-      if (selectedGen === 'fav') {
-        list = list.filter((p) => favorites[p.name]);
-      } else if (selectedGen !== 'all') {
+
+      if (selectedGen !== 'all') {
         list = list.filter((p) => p.generation === Number(selectedGen));
       }
-      return list;
-    } else {
-      // 5b) Not searching: filter current page
-      let list = [...enrichedPagePokemon];
-      if (selectedGen === 'fav') {
-        list = list.filter((p) => favorites[p.name]);
-      } else if (selectedGen !== 'all') {
-        list = list.filter((p) => p.generation === Number(selectedGen));
-      }
+
       return list;
     }
+
+    let list = [...enrichedPagePokemon];
+
+    if (selectedGen !== 'all') {
+      list = list.filter((p) => p.generation === Number(selectedGen));
+    }
+
+    return list;
   }, [
     searchQuery,
     enrichedSearchResults,
     enrichedPagePokemon,
     selectedGen,
-    favorites,
   ]);
 
   const toggleFavorite = async (name) => {
@@ -222,10 +268,9 @@ export default function Home() {
   // 6) Handle generation click: jump to page if not searching
   const handleGenClick = (gen) => {
     if (searchQuery.trim() !== '') {
-      // If searching, just set filter and stay on search results
       setSelectedGen(gen);
     } else {
-      if (gen === 'all' || gen === 'fav') {
+      if (gen === 'all') {
         setSelectedGen(gen);
       } else {
         const firstId = FIRST_ID_BY_GEN[gen];
@@ -234,11 +279,6 @@ export default function Home() {
         setCurrentPage(targetPage);
       }
     }
-  };
-
-  // 7) Navigate to details page on card click
-  const handleCardClick = (name) => {
-    navigate(`/pokemon/${name}`, { state: { fromPage: currentPage } });
   };
 
   if (error) {
@@ -282,13 +322,7 @@ export default function Home() {
             color={selectedGen === 'all' ? 'primary' : 'default'}
             onClick={() => handleGenClick('all')}
           />
-          <Chip
-            label="Favorites"
-            clickable
-            color={selectedGen === 'fav' ? 'primary' : 'default'}
-            icon={<Favorite />}
-            onClick={() => handleGenClick('fav')}
-          />
+
           {ALL_GEN_OPTIONS.map((gen) => (
             <Chip
               key={gen}
@@ -309,83 +343,18 @@ export default function Home() {
           </Box>
         ) : dataToDisplay.length === 0 ? (
           <Typography variant="h6" align="center" color="text.secondary">
-            {selectedGen === 'fav'
-              ? 'No favorites match.'
-              : 'No Pokémon match your criteria.'}
+            No Pokémon match your criteria.
           </Typography>
         ) : (
           <Grid container spacing={2}>
             {dataToDisplay.map((p) => (
-              <Grid item xs={6} sm={4} md={3} lg={2} key={p.name}>
-                <Card
-                  sx={{
-                    position: 'relative',
-                    cursor: 'pointer',
-                    transition: 'transform 0.2s, box-shadow 0.2s',
-                    '&:hover': {
-                      transform: 'translateY(-8px)',
-                      boxShadow: 6,
-                    },
-                  }}
-                  onClick={() => handleCardClick(p.name)}
-                >
-                  {/* Favorite Icon */}
-                  <IconButton
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFavorite(p.name);
-                    }}
-                    sx={{
-                      position: 'absolute',
-                      top: 4,
-                      right: 4,
-                      zIndex: 1,
-                      color: favorites[p.name] ? 'red' : 'rgba(0,0,0,0.4)',
-                    }}
-                  >
-                    {favorites[p.name] ? <Favorite /> : <FavoriteBorder />}
-                  </IconButton>
-
-                  {/* Image */}
-                  <CardMedia
-                    component="img"
-                    src={p.spriteUrl}
-                    alt={p.name}
-                    loading="lazy"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = PLACEHOLDER;
-                    }}
-                    sx={{
-                      width: '100%',
-                      aspectRatio: '1 / 1',
-                      objectFit: 'contain',
-                      bgcolor: 'rgba(0,0,0,0.05)',
-                    }}
-                  />
-
-                  {/* Name & Number */}
-                  <CardContent sx={{ textAlign: 'center', py: 1 }}>
-                    <Typography
-                      variant="subtitle1"
-                      sx={{ textTransform: 'capitalize', fontWeight: 'bold' }}
-                    >
-                      {p.name}
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ display: 'block' }}
-                    >
-                      #{p.id.toString().padStart(3, '0')}
-                    </Typography>
-                    <Chip
-                      label={`Gen ${p.generation}`}
-                      size="small"
-                      sx={{ mt: 1 }}
-                    />
-                  </CardContent>
-                </Card>
+              <Grid item xs={12} sm={6} md={4} lg={3} key={p.name}>
+                <PokemonCard
+                  pokemon={p}
+                  isFavorite={favorites[p.name]}
+                  onFavoriteClick={toggleFavorite}
+                  to={`/pokemon/${p.name}`}
+                />
               </Grid>
             ))}
           </Grid>

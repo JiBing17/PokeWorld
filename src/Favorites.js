@@ -6,7 +6,6 @@ import {
   CardMedia,
   CardContent,
   Typography,
-  Grid,
   FormControl,
   InputLabel,
   Select,
@@ -14,15 +13,20 @@ import {
   Box,
   IconButton,
   Button,
+  Chip,
+  Stack,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import Header from './Header';
 import pokeball from './static/pokeball.jpg';
 import { useAuth } from './AuthContext';
 import Authpopup from './Authpopup';
 import { fetchUserFavorites, removeUserFavorite } from './utils/favoritesApi';
+import { typeColors } from "./utils/constants";
+import PokemonCard from './PokemonCard';
 
-// Base URLs for API requests (backend)
 const BASE_URL = "http://localhost:5000/api";
 const POKEMON_URL = `${BASE_URL}/pokemon`;
 
@@ -33,9 +37,8 @@ function Favorites() {
   const [showAuthPopup, setShowAuthPopup] = useState(false);
 
   const { isAuthenticated } = useAuth();
-  const navigate = useNavigate(); // Hook for navigation
+  const navigate = useNavigate();
 
-  // Fetch user's favorite Pokémon from MongoDB
   const fetchFavorites = async () => {
     try {
       const favoriteMap = await fetchUserFavorites();
@@ -50,7 +53,6 @@ function Favorites() {
     fetchFavorites();
   }, [isAuthenticated]);
 
-  // Fetch details for favorite Pokémon
   useEffect(() => {
     const fetchDetails = async () => {
       const details = {};
@@ -70,7 +72,6 @@ function Favorites() {
     fetchDetails();
   }, [favorites]);
 
-  // Remove a Pokémon from favorites
   const removeFavorite = async (name) => {
     const token = localStorage.getItem('token');
 
@@ -92,171 +93,362 @@ function Favorites() {
     }
   };
 
-  // Sorting function based on user selection
   const handleSort = (a, b) => {
     if (sortOrder === 'asc') {
       return a.localeCompare(b);
-    } else if (sortOrder === 'desc') {
+    }
+
+    if (sortOrder === 'desc') {
       return b.localeCompare(a);
     }
+
     return 0;
   };
 
   const sortedFavorites = Object.keys(favorites).sort(handleSort);
 
   return (
-    <div>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        bgcolor: '#F6F8FC',
+        color: '#111827',
+      }}
+    >
       <Header />
 
       <Box
         sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          padding: "4rem 5%",
-          gap: 4,
-          marginTop: "4rem",
-          flexWrap: "wrap",
+          maxWidth: 1400,
+          mx: 'auto',
+          px: { xs: 2, md: 4 },
+          pt: { xs: 11, md: 12 },
+          pb: 6,
         }}
       >
-        {/* Left Section: Title, Description, and Image */}
-        <Box sx={{ width: { xs: "100%", md: "35%" }, textAlign: "center" }}>
-          <Typography
-            variant="h4"
-            component="h1"
-            sx={{ mb: 2, fontWeight: "bold", color: "black" }}
-          >
-            Favorites
-          </Typography>
-
-          <Typography variant="body1" sx={{ color: "#555", lineHeight: 1.6, mb: 3 }}>
-            Here you can view all your favorite Pokémon. Click on a Pokémon to
-            view its details or remove it from your favorites.
-          </Typography>
-
-          {/* Pokéball Image Below Text */}
-          <CardMedia
-            component="img"
-            image={pokeball}
-            alt="Pokéball illustration"
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', lg: '320px 1fr' },
+            gap: 4,
+            alignItems: 'start',
+          }}
+        >
+          <Card
             sx={{
-              width: "100%",
-              maxWidth: "350px",
-              height: "auto",
-              mx: "auto",
+              borderRadius: 5,
+              bgcolor: 'white',
+              color: '#111827',
+              border: '1px solid #E5E7EB',
+              boxShadow: '0 18px 50px rgba(15, 23, 42, 0.08)',
+              position: { lg: 'sticky' },
+              top: { lg: 96 },
+              overflow: 'hidden',
             }}
-          />
-        </Box>
-
-        {/* Right Section: Sorting & Pokémon Grid */}
-        <Box sx={{ flex: 1 }}>
-          {/* Dropdown to select sorting order */}
-          <FormControl variant="outlined" sx={{ minWidth: 150, mb: 3 }}>
-            <InputLabel id="sort-label">Sort By</InputLabel>
-            <Select
-              labelId="sort-label"
-              id="sort-select"
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-              label="Sort By"
+          >
+            <Box
+              sx={{
+                height: 160,
+                background: 'linear-gradient(135deg, #C22E28, #FFCC00)',
+                position: 'relative',
+                overflow: 'hidden',
+              }}
             >
-              <MenuItem value="recent">Most Recent</MenuItem>
-              <MenuItem value="asc">Name Ascending</MenuItem>
-              <MenuItem value="desc">Name Descending</MenuItem>
-            </Select>
-          </FormControl>
+              <Box
+                sx={{
+                  position: 'absolute',
+                  width: 220,
+                  height: 220,
+                  borderRadius: '50%',
+                  border: '32px solid rgba(255,255,255,0.18)',
+                  right: -70,
+                  top: -70,
+                }}
+              />
+            </Box>
 
-          {/* Conditional Rendering: If No Favorites, Show Message & Button */}
-          {sortedFavorites.length === 0 ? (
-            <Box sx={{ textAlign: "center", mt: 4 }}>
-              <Typography variant="h6" color="textSecondary" sx={{ mb: 2 }}>
-                {isAuthenticated
-                  ? 'No favorites yet! Start adding Pokémon to your favorites.'
-                  : 'Log in to view your saved favorites.'}
+            <CardContent sx={{ p: 3 }}>
+              <Typography
+                variant="h4"
+                sx={{
+                  fontWeight: 900,
+                  mb: 1,
+                }}
+              >
+                Favorites
               </Typography>
 
-              {isAuthenticated ? (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => navigate("/")} // Navigate to home page
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                  lineHeight: 1.7,
+                  mb: 3,
+                }}
+              >
+                Your saved Pokémon collection. Open a card to view details or remove it from your list.
+              </Typography>
+
+              <Stack spacing={2}>
+                <Box
                   sx={{
-                    backgroundColor: "#C22E28",
-                    color: "white",
-                    "&:hover": { backgroundColor: "#B22222" },
+                    p: 2,
+                    borderRadius: 3,
+                    bgcolor: '#F8FAFC',
+                    border: '1px solid #E5E7EB',
                   }}
                 >
-                  Go to Home
-                </Button>
-              ) : (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => setShowAuthPopup(true)}
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                    Saved Pokémon
+                  </Typography>
+
+                  <Typography variant="h3" sx={{ fontWeight: 900, lineHeight: 1.1 }}>
+                    {sortedFavorites.length}
+                  </Typography>
+                </Box>
+
+                <FormControl
+                  size="small"
+                  fullWidth
                   sx={{
-                    backgroundColor: "#C22E28",
-                    color: "white",
-                    "&:hover": { backgroundColor: "#B22222" },
-                  }}
-                >
-                  Login / Sign Up
-                </Button>
-              )}
-            </Box>
-          ) : (
-            // If favorites exist, display Pokémon grid
-            <Grid container spacing={2} justifyContent="flex-start">
-              {sortedFavorites.map((name) => (
-                <Grid item key={name} xs={12} sm={6} md={4} lg={3}>
-                  {/* Card for each favorite Pokémon */}
-                  <Card
-                    sx={{
-                      boxShadow: 3,
-                      borderRadius: 2,
-                      position: "relative",
-                      '&:hover': {
-                        boxShadow: 6,
-                        transform: 'scale(1.05)',
-                        transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+                    '& .MuiOutlinedInput-root': {
+                      bgcolor: '#F8FAFC',
+                      borderRadius: 3,
+                      '& fieldset': {
+                        borderColor: '#E5E7EB',
                       },
-                      backgroundColor: 'background.paper',
+                      '&:hover fieldset': {
+                        borderColor: '#C22E28',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#C22E28',
+                      },
+                    },
+                  }}
+                >
+                  <InputLabel id="sort-label">Sort By</InputLabel>
+                  <Select
+                    labelId="sort-label"
+                    id="sort-select"
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value)}
+                    label="Sort By"
+                  >
+                    <MenuItem value="recent">Most Recent</MenuItem>
+                    <MenuItem value="asc">Name Ascending</MenuItem>
+                    <MenuItem value="desc">Name Descending</MenuItem>
+                  </Select>
+                </FormControl>
+
+                <Button
+                  variant="contained"
+                  onClick={() => navigate('/')}
+                  endIcon={<ArrowForwardIcon />}
+                  sx={{
+                    bgcolor: '#C22E28',
+                    color: 'white',
+                    borderRadius: 3,
+                    py: 1.1,
+                    fontWeight: 900,
+                    textTransform: 'none',
+                    boxShadow: '0 10px 24px rgba(194,46,40,0.22)',
+                    '&:hover': {
+                      bgcolor: '#B22222',
+                      boxShadow: '0 14px 32px rgba(194,46,40,0.28)',
+                    },
+                  }}
+                >
+                  Browse Pokémon
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
+
+          <Box>
+            <Box
+              sx={{
+                mb: 3,
+                display: 'flex',
+                alignItems: { xs: 'flex-start', sm: 'center' },
+                justifyContent: 'space-between',
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: 2,
+              }}
+            >
+              <Box>
+                <Typography
+                  variant="h3"
+                  sx={{
+                    fontWeight: 900,
+                    fontSize: { xs: '2rem', md: '2.75rem' },
+                    mb: 0.5,
+                  }}
+                >
+                  My Collection
+                </Typography>
+
+                <Typography sx={{ color: 'text.secondary' }}>
+                  Manage the Pokémon you have added to your favorites.
+                </Typography>
+              </Box>
+
+              <Chip
+                icon={<FavoriteIcon sx={{ color: '#C22E28 !important' }} />}
+                label={`${sortedFavorites.length} saved`}
+                sx={{
+                  bgcolor: 'white',
+                  color: '#111827',
+                  fontWeight: 800,
+                  px: 1,
+                  border: '1px solid #E5E7EB',
+                  boxShadow: '0 8px 20px rgba(15,23,42,0.06)',
+                }}
+              />
+            </Box>
+
+            {sortedFavorites.length === 0 ? (
+              <Card
+                sx={{
+                  minHeight: 420,
+                  borderRadius: 5,
+                  bgcolor: 'white',
+                  color: '#111827',
+                  border: '1px solid #E5E7EB',
+                  boxShadow: '0 18px 50px rgba(15, 23, 42, 0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  p: 4,
+                  overflow: 'hidden',
+                  position: 'relative',
+                }}
+              >
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    width: 360,
+                    height: 360,
+                    borderRadius: '50%',
+                    bgcolor: 'rgba(194,46,40,0.08)',
+                    top: -120,
+                    right: -100,
+                  }}
+                />
+
+                <Box sx={{ position: 'relative', zIndex: 1, maxWidth: 520 }}>
+                  <Box
+                    sx={{
+                      width: 150,
+                      height: 150,
+                      mx: 'auto',
+                      mb: 3,
+                      borderRadius: '50%',
+                      bgcolor: '#FEF2F2',
+                      border: '1px solid #FECACA',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                     }}
                   >
-                    {/* Remove from Favorites Button */}
-                    <IconButton
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeFavorite(name);
+                    <CardMedia
+                      component="img"
+                      image={pokeball}
+                      alt="Pokéball illustration"
+                      sx={{
+                        width: 100,
+                        height: 100,
+                        objectFit: 'contain',
                       }}
-                      sx={{ position: 'absolute', top: 8, left: 8, color: 'error.main', zIndex: 1 }}
+                    />
+                  </Box>
+
+                  <Typography variant="h4" sx={{ fontWeight: 900, mb: 1 }}>
+                    {isAuthenticated
+                      ? 'No favorites saved yet'
+                      : 'Login to view your collection'}
+                  </Typography>
+
+                  <Typography
+                    sx={{
+                      color: 'text.secondary',
+                      lineHeight: 1.7,
+                      mb: 3,
+                    }}
+                  >
+                    {isAuthenticated
+                      ? 'Start browsing and click the heart icon on any Pokémon to add it here.'
+                      : 'Create an account or log in to save your favorite Pokémon across devices.'}
+                  </Typography>
+
+                  {isAuthenticated ? (
+                    <Button
+                      variant="contained"
+                      onClick={() => navigate('/')}
+                      sx={{
+                        bgcolor: '#C22E28',
+                        color: 'white',
+                        borderRadius: 999,
+                        px: 4,
+                        py: 1.2,
+                        textTransform: 'none',
+                        fontWeight: 800,
+                        '&:hover': {
+                          bgcolor: '#B22222',
+                        },
+                      }}
                     >
-                      <CloseIcon />
-                    </IconButton>
-
-                    {/* Clickable Card Link to Pokémon Details */}
-                    <Link to={`/pokemon/${name}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                      <CardContent>
-                        {/* Pokémon Name */}
-                        <Typography variant="h6" component="h2" gutterBottom align="center">
-                          {name.toUpperCase()}
-                        </Typography>
-
-                        {/* Pokémon Image */}
-                        {pokemonDetails[name] && (
-                          <CardMedia
-                            component="img"
-                            image={pokemonDetails[name].sprites.other["official-artwork"].front_default}
-                            alt={`Image of ${name}`}
-                            sx={{ height: 150, objectFit: 'contain' }}
-                          />
-                        )}
-                      </CardContent>
-                    </Link>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          )}
+                      Go Browse
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="contained"
+                      onClick={() => setShowAuthPopup(true)}
+                      sx={{
+                        bgcolor: '#C22E28',
+                        color: 'white',
+                        borderRadius: 999,
+                        px: 4,
+                        py: 1.2,
+                        textTransform: 'none',
+                        fontWeight: 800,
+                        '&:hover': {
+                          bgcolor: '#B22222',
+                        },
+                      }}
+                    >
+                      Login / Sign Up
+                    </Button>
+                  )}
+                </Box>
+              </Card>
+            ) : (
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, 1fr)',
+                    md: 'repeat(3, 1fr)',
+                  },
+                  gap: 3,
+                }}
+              >
+                {sortedFavorites.map((name, index) => {
+                  const pokemon = pokemonDetails[name];
+                    return (
+                      <PokemonCard
+                        key={name}
+                        pokemon={pokemon || { name }}
+                        onRemoveClick={removeFavorite}
+                        to={`/pokemon/${name}`}
+                        variant="favorite"
+                      />
+                    )
+                })}
+              </Box>
+            )}
+          </Box>
         </Box>
       </Box>
 
@@ -266,7 +458,7 @@ function Favorites() {
           onSuccess={fetchFavorites}
         />
       )}
-    </div>
+    </Box>
   );
 }
 
