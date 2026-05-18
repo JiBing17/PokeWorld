@@ -22,7 +22,7 @@ import {
 import SearchIcon from '@mui/icons-material/Search';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
-import Header from './Header';
+import Header from '../Header';
 import SetDetailsDrawer from './SetDetailsDrawer';
 
 const SETS_ENDPOINT = 'https://api.pokemontcg.io/v2/sets';

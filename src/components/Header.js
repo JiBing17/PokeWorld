@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AppBar, Toolbar, Box, IconButton, Typography, Tooltip } from '@mui/material';
-import { useAuth } from './AuthContext';
+import { useAuth } from '../AuthContext';
 import AuthPopup from './Authpopup';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
@@ -64,15 +64,15 @@ function Header() {
                         <CollectionsBookmarkIcon />
                     </IconButton>
 
-                    {/* Games / Card Browser (TCG cards) */}
-                    <IconButton component={Link} to="/games" color="inherit" sx={{ mr: 2 }}>
+                    {/* Trading (TCG cards) */}
+                    <IconButton component={Link} to="/trading" color="inherit" sx={{ mr: 2 }}>
                         <CatchingPokemonIcon />
                     </IconButton>
 
                     {/* In-Game Items / Collectibles */}
-                    <IconButton component={Link} to="/items" color="inherit" sx={{ mr: 2 }}>
+                    {/* <IconButton component={Link} to="/items" color="inherit" sx={{ mr: 2 }}>
                         <BackpackIcon />
-                    </IconButton>
+                    </IconButton> */}
 
                     {/** Movies Link **/}
                     <IconButton component={Link} to="/movies" color="inherit" sx={{ mr: 2 }}>

@@ -1,27 +1,15 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './Home';
-import PokemonDetails from './PokemonDetails';
-import { AuthProvider, useAuth } from './AuthContext';
-import Favorites from './Favorites';
-import Contact from './Contact';
-import Movies from './Movies';
-import Games from './Games';
-import MovieDetail from './MovieDetail.js';
+import PokemonDetails from './components/pokeAPI/PokemonDetails.js';
+import { AuthProvider } from './AuthContext';
+import Favorites from './components/pokeAPI/Favorites.js';
+import Contact from './components/Contact.js';
+import Movies from './components/pokemonMovies/Movies.js';
+import TcgMarket from './components/pokemonTCG/tcgMarket.js';
+import MovieDetail from './components/pokemonMovies/MovieDetail.js';
 import Items from './Items.js';
-import SetGallery from './SetGallery.js';
-
-// ensures that only authenticated users can access the route
-function PrivateRoute({ children }) {
-    const { isAuthenticated } = useAuth();
-
-    // Show a basic login/signup prompt instead of redirecting to a login page
-    return isAuthenticated ? children : (
-        <div>
-            <h2>Please log in or create an account to access this feature.</h2>
-        </div>
-    );
-}
+import SetGallery from './components/pokemonTCG/SetGallery.js';
 
 // Sets up the router and provides authentication context to all routes
 function App() {
@@ -35,14 +23,12 @@ function App() {
                     {/** Public routes **/}
                     <Route path="/pokemon/:pokemonName" element={<PokemonDetails />} />
                     <Route path="/movies" element={<Movies />} />
-                    <Route path="/games" element={<Games />} />
+                    <Route path="/trading" element={<TcgMarket />} />
                     <Route path="/movie/:id" element={<MovieDetail />} />
-                    <Route path="/items" element={<Items />} />
                     <Route path="/sets" element={<SetGallery />} />
-
-                    {/** Protected routes only show login/signup when accessed **/}
                     <Route path="/pokemon/favorites" element={<Favorites />} />
                     <Route path="/contact" element={<Contact />} />
+                    {/* <Route path="/items" element={<Items />} /> */}
                 </Routes>
             </Router>
         </AuthProvider>

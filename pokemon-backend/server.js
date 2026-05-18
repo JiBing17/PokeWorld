@@ -23,6 +23,17 @@ const rateLimit = require('express-rate-limit');
 
 const BASE_URL = 'https://pokeapi.co/api/v2'; // Base URL for the PokeAPI
 
+const OpenAI = require('openai');
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const chatbotLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: 'Too many chatbot requests. Please try again later.',
+});
+
 function authenticateUser(req, res, next) {
   const authHeader = req.headers.authorization;
 
@@ -310,6 +321,57 @@ ${message}
   } catch (error) {
     console.error('Contact email error:', error);
     res.status(500).send('Failed to send message.');
+  }
+});
+
+app.post('/api/chatbot', chatbotLimiter, async (req, res) => {
+  const { message } = req.body;
+
+  if (!message || typeof message !== 'string') {
+    return res.status(400).json({ error: 'Message is required.' });
+  }
+
+  if (message.length > 500) {
+    return res.status(400).json({ error: 'Message is too long.' });
+  }
+
+  try {
+    const response = await openai.responses.create({
+      model: 'gpt-4.1-mini',
+      input: [
+        {
+          role: 'system',
+          content: `
+You are the PokéWorld website assistant.
+
+Your job is to explain basic things about this website in a friendly, concise way.
+
+Website context:
+- PokéWorld is a Pokémon fan website.
+- Users can browse Pokémon, view Pokémon details, search Pokémon, and filter by generation.
+- Users can sign up, log in, or use Google login.
+- Logged-in users can save favorite Pokémon/cards to their account.
+- Favorites are stored per user in MongoDB Atlas.
+- Users can explore Pokémon movies, TCG cards, TCG sets, and items.
+- The Contact page lets users send feedback or questions.
+- If asked about something unrelated to PokéWorld, politely redirect back to website help.
+- Do not claim to perform account changes, purchases, or admin actions.
+- Keep answers under 4 sentences unless the user asks for more detail.
+          `,
+        },
+        {
+          role: 'user',
+          content: message,
+        },
+      ],
+    });
+
+    res.json({
+      reply: response.output_text,
+    });
+  } catch (error) {
+    console.error('Chatbot error:', error);
+    res.status(500).json({ error: 'Failed to get chatbot response.' });
   }
 });
 

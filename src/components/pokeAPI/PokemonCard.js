@@ -15,7 +15,7 @@ import {
     Close,
     ArrowForward,
 } from '@mui/icons-material';
-import { typeColors } from './utils/constants';
+import { typeColors } from '../../utils/constants';
 
 const PLACEHOLDER =
     'https://upload.wikimedia.org/wikipedia/commons/b/b1/Loading_icon.gif';

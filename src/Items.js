@@ -28,7 +28,8 @@ import {
   Close,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import Header from './Header';
+import Header from './components/Header';
+
 // PokeAPI constants
 const POKEAPI_BASE = 'https://pokeapi.co/api/v2';
 const ITEMS_ENDPOINT = `${POKEAPI_BASE}/item`;

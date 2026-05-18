@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
-  CardMedia,
   CardContent,
   Typography,
   FormControl,
@@ -11,20 +10,16 @@ import {
   Select,
   MenuItem,
   Box,
-  IconButton,
   Button,
   Chip,
   Stack,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import Header from './Header';
-import pokeball from './static/pokeball.jpg';
-import { useAuth } from './AuthContext';
-import Authpopup from './Authpopup';
-import { fetchUserFavorites, removeUserFavorite } from './utils/favoritesApi';
-import { typeColors } from "./utils/constants";
+import Header from '../Header';
+import { useAuth } from '../../AuthContext';
+import Authpopup from '../Authpopup';
+import { fetchUserFavorites, removeUserFavorite } from '../../utils/favoritesApi';
 import PokemonCard from './PokemonCard';
 
 const BASE_URL = "http://localhost:5000/api";
@@ -154,17 +149,6 @@ function Favorites() {
                 overflow: 'hidden',
               }}
             >
-              <Box
-                sx={{
-                  position: 'absolute',
-                  width: 220,
-                  height: 220,
-                  borderRadius: '50%',
-                  border: '32px solid rgba(255,255,255,0.18)',
-                  right: -70,
-                  top: -70,
-                }}
-              />
             </Box>
 
             <CardContent sx={{ p: 3 }}>
@@ -324,44 +308,8 @@ function Favorites() {
                   position: 'relative',
                 }}
               >
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    width: 360,
-                    height: 360,
-                    borderRadius: '50%',
-                    bgcolor: 'rgba(194,46,40,0.08)',
-                    top: -120,
-                    right: -100,
-                  }}
-                />
 
                 <Box sx={{ position: 'relative', zIndex: 1, maxWidth: 520 }}>
-                  <Box
-                    sx={{
-                      width: 150,
-                      height: 150,
-                      mx: 'auto',
-                      mb: 3,
-                      borderRadius: '50%',
-                      bgcolor: '#FEF2F2',
-                      border: '1px solid #FECACA',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <CardMedia
-                      component="img"
-                      image={pokeball}
-                      alt="Pokéball illustration"
-                      sx={{
-                        width: 100,
-                        height: 100,
-                        objectFit: 'contain',
-                      }}
-                    />
-                  </Box>
 
                   <Typography variant="h4" sx={{ fontWeight: 900, mb: 1 }}>
                     {isAuthenticated

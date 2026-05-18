@@ -17,13 +17,13 @@ import {
   Stack,
   Divider,
 } from "@mui/material";
-import Header from "./Header";
+import Header from "../Header";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Favorite, FavoriteBorder } from "@mui/icons-material";
-import Authpopup from "./Authpopup";
-import { useAuth } from "./AuthContext";
-import { fetchUserFavorites, toggleUserFavorite } from "./utils/favoritesApi";
-import { typeColors } from "./utils/constants";
+import Authpopup from "../Authpopup";
+import { useAuth } from "../../AuthContext";
+import { fetchUserFavorites, toggleUserFavorite } from "../../utils/favoritesApi";
+import { typeColors } from "../../utils/constants";
 
 const BASE_URL = "http://localhost:5000/api";
 const POKEMON_URL = BASE_URL + "/pokemon";
