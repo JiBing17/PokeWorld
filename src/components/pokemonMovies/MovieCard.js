@@ -9,9 +9,7 @@ import {
   Chip,
   Rating,
 } from '@mui/material';
-import placeHolder from '../../static/placeholder.jpg';
-
-const POSTER_BASE_URL = 'https://image.tmdb.org/t/p/w500';
+import { PLACEHOLDER, TMDB_POSTER_BASE_URL } from '../../utils/constants';
 
 function MovieCard({ movie, onClick }) {
   return (
@@ -44,8 +42,8 @@ function MovieCard({ movie, onClick }) {
             component="img"
             image={
               movie.poster_path
-                ? `${POSTER_BASE_URL}${movie.poster_path}`
-                : placeHolder
+                ? `${TMDB_POSTER_BASE_URL}${movie.poster_path}`
+                : PLACEHOLDER
             }
             alt={movie.title}
             sx={{

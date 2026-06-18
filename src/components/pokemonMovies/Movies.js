@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import {
   Typography,
   Container,
@@ -15,143 +14,118 @@ import Header from '../Header';
 import MovieCard from './MovieCard';
 import MovieHero from './MovieHero';
 import SearchBar from '../SearchBar';
-
-const TMDB_API_KEY = process.env.REACT_APP_TMDB_API_KEY;
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+import {
+  fetchMovieGenres,
+  fetchPokemonMovies,
+  fetchMovieDurations,
+} from '../../utils/moviesAPI';
 
 export default function Movies() {
-  const [movies, setMovies] = useState([]);
-  const [filteredMovies, setFilteredMovies] = useState([]);
-  const [genreMap, setGenreMap] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [heroIndex, setHeroIndex] = useState(0);
-  const [durations, setDurations] = useState({});
-  const navigate = useNavigate();
+  const [movies, setMovies] = useState([]); // full list of Pokémon-related movies from TMDB
+  const [filteredMovies, setFilteredMovies] = useState([]); // movies shown after applying search filter
+  const [genreMap, setGenreMap] = useState({}); // genre id-to-name map, example: { 12: "Adventure", 16: "Animation" }
+  const [loading, setLoading] = useState(true); // true while movies are being fetched
+  const [error, setError] = useState(null); // stores fetch errors so the UI can show an error message
+  const [searchTerm, setSearchTerm] = useState(''); // current movie search input value
+  const [heroIndex, setHeroIndex] = useState(0); // index of the currently displayed featured movie
+  const [durations, setDurations] = useState({}); // movie runtime map, example: { 10991: 96, 11836: 74 }
+  const navigate = useNavigate(); // lets this page navigate to movie details
 
-  // 1) Fetch genre list ONCE
+  // Fetches TMDB movie genres once when the Movies page first loads
   useEffect(() => {
-    const fetchGenres = async () => {
+    const loadGenres = async () => {
       try {
-        const res = await axios.get(`${TMDB_BASE_URL}/genre/movie/list`, {
-          params: { api_key: TMDB_API_KEY, language: 'en-US' },
-        });
+        // Example genres:
+        // {
+        //   12: "Adventure",
+        //   16: "Animation",
+        //   10751: "Family"
+        // }
+        const genres = await fetchMovieGenres();
 
-        const map = {};
-
-        res.data.genres.forEach((g) => {
-          map[g.id] = g.name;
-        });
-
-        setGenreMap(map);
+        // Store genre id-to-name map for movie cards/details
+        setGenreMap(genres);
       } catch (err) {
         console.error('Failed to fetch genres:', err);
       }
     };
 
-    fetchGenres();
+    loadGenres();
   }, []);
 
-  // 2) Fetch all Pokémon movies (possibly multiple pages)
+  // Fetches Pokémon-related movies once when the Movies page first loads
   useEffect(() => {
-    const fetchAll = async () => {
+    const loadMovies = async () => {
       try {
-        const first = await axios.get(`${TMDB_BASE_URL}/search/movie`, {
-          params: {
-            api_key: TMDB_API_KEY,
-            query: 'Pokémon',
-            include_adult: false,
-            page: 1,
-          },
-        });
+        // Example pokemonMovies:
+        // [
+        //   {
+        //     id: 10991,
+        //     title: "Pokémon: The First Movie",
+        //     overview: "...",
+        //     poster_path: "...",
+        //     genre_ids: [...]
+        //   }
+        // ]
 
-        const pages = first.data.total_pages;
-        let all = [...first.data.results];
+        // Searches TMDB for Pokémon movies and returns the filtered results
+        const pokemonMovies = await fetchPokemonMovies();
 
-        // Fetch remaining pages in parallel
-        const calls = [];
+        // Store the full movie list
+        setMovies(pokemonMovies);
 
-        for (let i = 2; i <= pages; i++) {
-          calls.push(
-            axios.get(`${TMDB_BASE_URL}/search/movie`, {
-              params: {
-                api_key: TMDB_API_KEY,
-                query: 'Pokémon',
-                include_adult: false,
-                page: i,
-              },
-            })
-          );
-        }
-
-        const responses = await Promise.all(calls);
-
-        responses.forEach((r) => {
-          all.push(...r.data.results);
-        });
-
-        const pokemonOnly = all.filter((m) => {
-          const title = m.title?.toLowerCase() || '';
-          const overview = m.overview?.toLowerCase() || '';
-
-          return (
-            title.includes('pokémon') ||
-            title.includes('pokemon') ||
-            overview.includes('pokémon') ||
-            overview.includes('pokemon')
-          );
-        });
-
-        setMovies(pokemonOnly);
-        setFilteredMovies(pokemonOnly);
+        // Start filteredMovies with the same list until the user searches
+        setFilteredMovies(pokemonMovies);
       } catch (err) {
+        // Store error so the UI can show an error message
         setError(err);
       } finally {
+        // Stop loading after success or failure
         setLoading(false);
       }
     };
 
-    fetchAll();
+    loadMovies();
   }, []);
 
-  // 3) Once `movies` is set, fetch every movie’s runtime exactly ONCE
+  // Fetches runtime/duration for each movie after the movie list is loaded
   useEffect(() => {
+    // No movies yet, so there are no durations to fetch
     if (movies.length === 0) return;
 
-    const fetchAllRuntimes = async () => {
-      const newDurations = {};
+    const loadDurations = async () => {
+      // Example movieDurations:
+      // {
+      //   10991: 96,
+      //   11836: 84
+      // }
+      //
+      // Keys are TMDB movie IDs
+      // Values are runtimes in minutes
+      const movieDurations = await fetchMovieDurations(movies);
 
-      await Promise.all(
-        movies.map(async (m) => {
-          try {
-            const detailRes = await axios.get(`${TMDB_BASE_URL}/movie/${m.id}`, {
-              params: { api_key: TMDB_API_KEY },
-            });
-
-            newDurations[m.id] = detailRes.data.runtime;
-          } catch (_) {
-            // swallow 404 or other errors for individual movies
-          }
-        })
-      );
-
-      setDurations(newDurations);
+      // Store runtimes so movie details can show duration
+      setDurations(movieDurations);
     };
 
-    fetchAllRuntimes();
+    loadDurations();
   }, [movies]);
 
-  // 4) Filter based on search term
+  // Filters the movie list whenever the search text changes
   useEffect(() => {
+    // If search is empty, show all Pokémon movies
     if (!searchTerm) {
       setFilteredMovies(movies);
     } else {
-      setFilteredMovies(
-        movies.filter((m) =>
-          m.title.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+      // Example:
+      // searchTerm = "mewtwo"
+      //
+      // Keeps movies whose title includes "mewtwo"
+      const filtered = movies.filter((movie) =>
+        movie.title.toLowerCase().includes(searchTerm.toLowerCase())
       );
+
+      setFilteredMovies(filtered);
     }
   }, [searchTerm, movies]);
 
@@ -160,22 +134,24 @@ export default function Movies() {
     .sort((a, b) => b.popularity - a.popularity)
     .slice(0, 5);
 
-  // Carousel nav
+  // Carousel navigation to show prev hero display movie from featured
   const handlePrev = () => {
     setHeroIndex((prev) =>
       prev === 0 ? featuredMovies.length - 1 : prev - 1
     );
   };
 
+  // Carousel navigation to show next hero display movie from featured
   const handleNext = () => {
     setHeroIndex((prev) =>
       prev === featuredMovies.length - 1 ? 0 : prev + 1
     );
   };
 
+  // Handles clicking on a movie to navigate to its details page
   const handleMovieClick = (movie) => {
     navigate(`/movie/${movie.id}`, {
-      state: {
+      state: { // pass in additional data to the movie details page
         movie,
         genres: genreMap,
         durations,
@@ -183,6 +159,7 @@ export default function Movies() {
     });
   };
 
+  // Renders a loading UI on the movies page while data is being fetched
   if (loading) {
     return (
       <Box sx={{ minHeight: '100vh', bgcolor: '#F6F8FC' }}>
@@ -199,7 +176,7 @@ export default function Movies() {
       </Box>
     );
   }
-
+  // Renders an error message if there was a problem fetching movies
   if (error) {
     return (
       <Box sx={{ minHeight: '100vh', bgcolor: '#F6F8FC' }}>
@@ -286,7 +263,7 @@ export default function Movies() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-
+        
         {filteredMovies.length === 0 ? (
           <Typography variant="h6" align="center" color="text.secondary">
             No movies found.

@@ -23,94 +23,126 @@ import { Favorite, FavoriteBorder } from "@mui/icons-material";
 import Authpopup from "../Authpopup";
 import { useAuth } from "../../AuthContext";
 import { fetchUserFavorites, toggleUserFavorite } from "../../utils/favoritesApi";
-import { typeColors } from "../../utils/constants";
-
-const BASE_URL = "http://localhost:5000/api";
-const POKEMON_URL = BASE_URL + "/pokemon";
+import { typeColors, POKEMON_URL, truncateDescription } from "../../utils/constants";
+import {
+  getEnglishDescription,
+  getMoveDetails,
+  parseEvolutionChain,
+} from "../../utils/pokemonDetailsUtils";
 
 function PokemonDetails() {
-  const { pokemonName } = useParams();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const { pokemonName } = useParams(); // Gets the Pokémon name from the URL, example: /pokemon/pikachu
+  const navigate = useNavigate(); // Lets this page navigate to another route
+  const location = useLocation(); // Reads route state, like which page the user came from
 
-  const [pokemonDetails, setPokemonDetails] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [pokemonDetails, setPokemonDetails] = useState(null); // full Pokémon data for the details page
+  const [loading, setLoading] = useState(true); // true while Pokémon details are loading
+  const [error, setError] = useState(null); // stores fetch errors so the UI can show an error message
 
-  const [evolutionChain, setEvolutionChain] = useState([]);
-  const [moves, setMoves] = useState([]);
-  const [displayedMoves, setDisplayedMoves] = useState(9);
-  const [about, setAbout] = useState("");
-  const [favorites, setFavorites] = useState({});
-  const [showAuthPopup, setShowAuthPopup] = useState(false);
+  const [evolutionChain, setEvolutionChain] = useState([]); // simplified evolution list, example: [{ name: "pichu", sprite: "..." }]
+  const [moves, setMoves] = useState([]); // simplified move list used in the Moves section
+  const [displayedMoves, setDisplayedMoves] = useState(9); // number of moves currently shown
+  const [about, setAbout] = useState(""); // English Pokédex description text
+  const [favorites, setFavorites] = useState({}); // favorite map, example: { pikachu: true, charizard: true }
+  const [showAuthPopup, setShowAuthPopup] = useState(false); // controls login/signup popup visibility
 
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth(); // tracks whether the user is logged in
 
 
+  // Fetches favorites and stores them in state
   const fetchFavorites = async () => {
     try {
+      // Example favoriteMap:
+      // {
+      //   pikachu: true,
+      //   charizard: true
+      // }
       const favoriteMap = await fetchUserFavorites();
+
+      // Updates the favorites state used by Pokémon cards
       setFavorites(favoriteMap);
     } catch (error) {
-      console.error("Failed to fetch favorites:", error);
+      console.error('Failed to fetch favorites:', error);
+
+      // If fetching fails, reset favorites to an empty object
       setFavorites({});
     }
   };
 
-  useEffect(() => {
+  useEffect(() => {  // Fetches user's favorite Pokémon when authentication state changes
     fetchFavorites();
   }, [isAuthenticated]);
 
+  // Fetches all data needed for the Pokémon details page
   useEffect(() => {
     const fetchPokemonDetails = async () => {
       try {
+        // Start loading and clear old errors before fetching a new Pokémon
         setLoading(true);
         setError(null);
 
+        // Example request:
+        // /api/pokemon/pikachu
         const response = await axios.get(`${POKEMON_URL}/${pokemonName}`);
+
+        // Example response.data has full Pokémon data:
+        // {
+        //   name: "pikachu",
+        //   id: 25,
+        //   sprites: {...},
+        //   stats: [...],
+        //   types: [...],
+        //   moves: [...],
+        //   species: { url: "https://pokeapi.co/api/v2/pokemon-species/25/" }
+        // }
         setPokemonDetails(response.data);
 
-        const speciesUrl = response.data.species.url;
-        const speciesResponse = await axios.get(speciesUrl);
+        // Fetch species data using the species URL from the Pokémon response
+        const speciesResponse = await axios.get(response.data.species.url);
 
-        const evolutionChainUrl = speciesResponse.data.evolution_chain.url;
-        const evolutionChainResponse = await axios.get(evolutionChainUrl);
+        // Example speciesResponse.data includes:
+        // {
+        //   flavor_text_entries: [...],
+        //   evolution_chain: {
+        //     url: "https://pokeapi.co/api/v2/evolution-chain/10/"
+        //   }
+        // }
+
+        // Fetch evolution chain data using the URL from the species response
+        const evolutionChainResponse = await axios.get(
+          speciesResponse.data.evolution_chain.url
+        );
+
+        // Example parseEvolutionChain output:
+        // [
+        //   { name: "pichu", sprite: ".../172.png" },
+        //   { name: "pikachu", sprite: ".../25.png" },
+        //   { name: "raichu", sprite: ".../26.png" }
+        // ]
         setEvolutionChain(parseEvolutionChain(evolutionChainResponse.data));
 
-        const moveDetailsPromises = response.data.moves.map((move) =>
-          axios.get(move.move.url)
-        );
-
-        const movesDetailsResponses = await Promise.all(moveDetailsPromises);
-
-        const movesDetails = movesDetailsResponses.map((response) => ({
-          name: response.data.name.replace("-", " "),
-          type: response.data.type.name,
-          power: response.data.power,
-          accuracy: response.data.accuracy,
-          pp: response.data.pp,
-          description: response.data.effect_entries.find(
-            (entry) => entry.language.name === "en"
-          )?.effect,
-        }));
-
+        // Fetch each move's detail URL and keep only fields needed by the UI
+        // Example output:
+        // [
+        //   { name: "quick attack", type: "normal", power: 40, accuracy: 100, pp: 30, description: "..." },
+        //   { name: "thunder shock", type: "electric", power: 40, accuracy: 100, pp: 30, description: "..." }
+        // ]
+        const movesDetails = await getMoveDetails(response.data.moves);
         setMoves(movesDetails);
 
-        const flavorTextEntries = speciesResponse.data.flavor_text_entries.filter(
-          (entry) => entry.language.name === "en"
+        // Gets the first English Pokédex description and cleans weird line breaks
+        // Example output:
+        // "When several of these Pokémon gather, their electricity could build and cause lightning storms."
+        const description = getEnglishDescription(
+          speciesResponse.data.flavor_text_entries
         );
 
-        if (flavorTextEntries.length > 0) {
-          const cleanDescription = flavorTextEntries[0].flavor_text.replace(
-            /\f/g,
-            " "
-          );
-          setAbout(cleanDescription);
-        }
-
-        setLoading(false);
+        setAbout(description);
       } catch (error) {
+        // Store error so the UI can show an error message
         setError(error);
+      } finally {
+        // Stop loading after success or failure
         setLoading(false);
       }
     };
@@ -118,22 +150,7 @@ function PokemonDetails() {
     fetchPokemonDetails();
   }, [pokemonName]);
 
-  const parseEvolutionChain = (chain) => {
-    const stages = [];
-    let currentStage = chain.chain;
-
-    while (currentStage) {
-      stages.push({
-        name: currentStage.species.name,
-        sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${currentStage.species.url.split("/")[6]}.png`,
-      });
-
-      currentStage = currentStage.evolves_to[0];
-    }
-
-    return stages;
-  };
-
+  // Function used to go navigate back to home page 
   const handleBack = () => {
     navigate("/", { state: { page: location.state?.fromPage || 1 } });
   };
@@ -154,10 +171,12 @@ function PokemonDetails() {
     }
   };
 
+  // Update state to show 9 more moves on a certain button click
   const showMoreMoves = () => {
     setDisplayedMoves((prev) => prev + 9);
   };
 
+  // Determines chip color based on move power or accuracy value
   const getColorForValue = (value) => {
     if (value === null) return "#9e9e9e";
     if (value < 50) return "#ef5350";
@@ -165,19 +184,6 @@ function PokemonDetails() {
     return "#43a047";
   };
 
-  const truncateDescription = (text) => {
-    if (!text) {
-      return "No description found.";
-    }
-
-    const words = text.split(" ");
-
-    if (words.length > 50) {
-      return words.slice(0, 50).join(" ") + "...";
-    }
-
-    return text;
-  };
 
   if (loading) {
     return (
@@ -221,6 +227,7 @@ function PokemonDetails() {
     );
   }
 
+  // Not found UI
   if (!pokemonDetails) {
     return (
       <Box>
@@ -232,6 +239,7 @@ function PokemonDetails() {
     );
   }
 
+  // Parse info from the Pokémon details
   const { name, sprites, stats, types, id, height, weight } = pokemonDetails;
   const primaryType = types[0].type.name;
   const primaryColor = typeColors[primaryType] || "#C22E28";

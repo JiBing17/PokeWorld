@@ -1,6 +1,7 @@
 import React from 'react';
 import { TextField } from '@mui/material';
 
+// Reusable search bar component
 function SearchBar({
   value,
   onChange,

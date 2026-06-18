@@ -19,102 +19,93 @@ import {
 import Header from '../Header';
 import MovieCard from './MovieCard';
 import MovieHero from './MovieHero';
-import placeHolder from '../../static/placeholder.jpg';
-
-const TMDB_API_KEY = process.env.REACT_APP_TMDB_API_KEY;
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-const POSTER_BASE_URL = 'https://image.tmdb.org/t/p/w500';
+import { TMDB_POSTER_BASE_URL, PLACEHOLDER } from '../../utils/constants';
+import {
+  fetchPokemonMovies,
+  fetchMovieCast,
+} from '../../utils/moviesAPI';
 
 export default function MovieDetail() {
-  const location = useLocation();
-  const navigate = useNavigate();
+  const location = useLocation(); // Reads data passed from the Movies page through navigate state
+  const navigate = useNavigate(); // Lets this page navigate back or open another movie details page
+
+  // Movie data passed from Movies.js
+  // Example location.state:
+  // {
+  //   movie: { id: 10991, title: "Pokémon: The First Movie", ... },
+  //   genres: { 12: "Adventure", 16: "Animation" },
+  //   durations: { 10991: 96 }
+  // }
   const { movie, genres, durations } = location.state || {};
 
-  const [pokemonMovies, setPokemonMovies] = useState([]);
-  const [castMembers, setCastMembers] = useState([]);
-  const [activeTab, setActiveTab] = useState('Pokémon Movies');
+  const [pokemonMovies, setPokemonMovies] = useState([]); // related Pokémon movies shown in the carousel
+  const [castMembers, setCastMembers] = useState([]); // cast list for the selected movie
 
+  const [activeTab, setActiveTab] = useState('Pokémon Movies'); // current tab, either "Pokémon Movies" or "Cast"
+
+  // Ref for the horizontal carousel container
+  // Used to scroll left/right with arrow buttons
   const scrollContainerRef = useRef(null);
 
+  // Fetches related Pokémon movies and cast for the selected movie
   useEffect(() => {
     if (!movie) return;
 
-    const fetchPokemonMovies = async () => {
+    const loadMovieExtraData = async () => {
       try {
-        const firstRes = await fetch(
-          `${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=Pokémon&include_adult=false&language=en-US&page=1`
-        );
+        // Reuse shared Pokémon movie search helper
+        const allPokemonMovies = await fetchPokemonMovies();
 
-        const firstData = await firstRes.json();
-        const totalPages = Math.min(firstData.total_pages || 1, 5);
-        let allMovies = firstData.results || [];
+        // Example allPokemonMovies:
+        // [
+        //   { id: 10991, title: "Pokémon: The First Movie" },
+        //   { id: 11836, title: "Pokémon 3: The Movie" }
+        // ]
 
-        const calls = [];
+        // Remove the movie currently being viewed from the related list
+        const relatedMovies = allPokemonMovies.filter((m) => m.id !== movie.id);
 
-        for (let i = 2; i <= totalPages; i++) {
-          calls.push(
-            fetch(
-              `${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=Pokémon&include_adult=false&language=en-US&page=${i}`
-            ).then((res) => res.json())
-          );
-        }
+        setPokemonMovies(relatedMovies);
 
-        const responses = await Promise.all(calls);
+        // Fetch cast for the current movie
+        const cast = await fetchMovieCast(movie.id);
 
-        responses.forEach((data) => {
-          allMovies.push(...(data.results || []));
-        });
+        // Example cast:
+        // [
+        //   { name: "Ikue Otani", character: "Pikachu", profile_path: "..." }
+        // ]
 
-        const filteredMovies = allMovies
-          .filter((m) => m.id !== movie.id)
-          .filter((m) => {
-            const title = m.title?.toLowerCase() || '';
-            const overview = m.overview?.toLowerCase() || '';
-
-            return (
-              title.includes('pokémon') ||
-              title.includes('pokemon') ||
-              overview.includes('pokémon') ||
-              overview.includes('pokemon')
-            );
-          });
-
-        setPokemonMovies(filteredMovies);
+        setCastMembers(cast);
       } catch (err) {
-        console.error('Error fetching Pokémon movies:', err);
+        console.error('Error fetching movie extra data:', err);
       }
     };
 
-    const fetchCast = async () => {
-      try {
-        const res = await fetch(
-          `${TMDB_BASE_URL}/movie/${movie.id}/credits?api_key=${TMDB_API_KEY}&language=en-US`
-        );
-
-        const data = await res.json();
-        setCastMembers(data.cast || []);
-      } catch (err) {
-        console.error('Error fetching cast:', err);
-      }
-    };
-
-    fetchPokemonMovies();
-    fetchCast();
+    loadMovieExtraData();
   }, [movie]);
 
+  // Resets the carousel scroll position when switching tabs
   useEffect(() => {
+    // Example:
+    // User switches from "Pokémon Movies" to "Cast"
+    // Carousel starts back at the far left
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollLeft = 0;
     }
   }, [activeTab]);
 
+  // Scrolls the carousel left or right
   const handleScroll = (amount) => {
+    // Example:
+    // handleScroll(-750) scrolls left
+    // handleScroll(750) scrolls right
     scrollContainerRef.current?.scrollBy({
       left: amount,
       behavior: 'smooth',
     });
   };
 
+  // Opens another movie details page and passes the same shared movie data forward
   const handleMovieClick = (selectedMovie) => {
     navigate(`/movie/${selectedMovie.id}`, {
       state: {
@@ -125,6 +116,7 @@ export default function MovieDetail() {
     });
   };
 
+  // UI if no movie data is available
   if (!movie) {
     return (
       <Box sx={{ minHeight: '100vh', bgcolor: '#F6F8FC' }}>
@@ -177,9 +169,9 @@ export default function MovieDetail() {
       </Box>
     );
   }
-
+  // Get the runtime of the current movie in the case that it is available
   const runtime = durations?.[movie.id] ? `${durations[movie.id]} mins` : 'N/A';
-
+  
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#F6F8FC' }}>
       <Header />
@@ -366,8 +358,8 @@ export default function MovieDetail() {
                           component="img"
                           image={
                             member.profile_path
-                              ? `${POSTER_BASE_URL}${member.profile_path}`
-                              : placeHolder
+                              ? `${TMDB_POSTER_BASE_URL}${member.profile_path}`
+                              : PLACEHOLDER
                           }
                           alt={member.name}
                           sx={{

@@ -1,58 +1,75 @@
 require('dotenv').config(); // Load environment variables from a .env file into process.env
 
 // Import required modules
-const express = require('express');
-const axios = require('axios');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const bcrypt = require('bcryptjs');
-
-const connectToDatabase = require('./db'); // Import the database connection function
+const express = require('express'); // Creates the backend server and routes
+const axios = require('axios'); // Makes HTTP requests to external APIs
+const cors = require('cors'); // Allows frontend and backend to communicate across different ports/domains
+const bodyParser = require('body-parser'); // Parses JSON request bodies so req.body is readable
+const bcrypt = require('bcryptjs'); // Hashes and compares passwords
+const nodemailer = require('nodemailer'); // Sends emails from the contact form
+const rateLimit = require('express-rate-limit'); // Limits repeated requests to protect routes from spam
+const jwt = require('jsonwebtoken'); // Creates and verifies login tokens
+const connectToDatabase = require('./db'); // Connects to MongoDB
+const { OAuth2Client } = require('google-auth-library'); // Verifies Google login credentials
+const OpenAI = require('openai'); // Connects to the OpenAI API for the chatbot
 
 const app = express(); // Initialize the Express application
 const PORT = process.env.PORT || 5000; // Define the port number
-
-app.use(cors()); // Allows communication between one domain to another (front-end to back-end)
-app.use(bodyParser.json()); // Parses JSON request bodies (req.body is readable)
-
-const jwt = require('jsonwebtoken');
-const { OAuth2Client } = require('google-auth-library');
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-const nodemailer = require('nodemailer');
-const rateLimit = require('express-rate-limit');
-
 const BASE_URL = 'https://pokeapi.co/api/v2'; // Base URL for the PokeAPI
-
-const OpenAI = require('openai');
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID); // Google auth client for verifying Google login
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY, // API key used for chatbot responses
 });
-
 const chatbotLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   message: 'Too many chatbot requests. Please try again later.',
 });
 
+const contactLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 3,
+  message: 'Too many messages sent. Please try again later.',
+});
+
+app.use(cors()); // Allows communication between one domain to another (front-end to back-end)
+app.use(bodyParser.json()); // Parses JSON request bodies (req.body is readable)
+
+// Middleware that checks if the request has a valid login token
 function authenticateUser(req, res, next) {
+  // Get the Authorization header from the request
+  // Example: "Bearer jwtToken..."
   const authHeader = req.headers.authorization;
 
+  // If no token was sent, block the request
   if (!authHeader) {
     return res.status(401).send('No token provided');
   }
 
+  // Extract only the token part after "Bearer"
   const token = authHeader.split(' ')[1];
 
   try {
+    // Verify the token using the same secret used when creating it
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    // Example decoded token:
+    // {
+    //   username: "ash",
+    //   email: "ash@example.com"
+    // }
+
+    // Store user info on req so protected routes can use it
     req.user = {
       username: decoded.username,
       email: decoded.email,
     };
 
+    // Token is valid, so continue to the actual protected route
+    // Without next(), the request would stop here and never reach the route
     next();
   } catch (error) {
+    // Token is invalid or expired, so block the request
     res.status(401).send('Invalid or expired token');
   }
 }
@@ -82,46 +99,96 @@ app.post('/api/users/register', async (req, res) => {
   }
 });
 
-// Route to handle POST request for logging in returning users
+// Route for logging in returning users
 app.post('/api/users/login', async (req, res) => {
+  // Get username and password from the request body
   const { username, password } = req.body;
 
   try {
+    // Connect to the users collection
     const db = await connectToDatabase();
     const collection = db.collection('users');
 
+    // Look for a user with this username
     const user = await collection.findOne({ username });
 
+    // Check that the user exists and the password matches the hashed password
     if (user && bcrypt.compareSync(password, user.password)) {
+      // Create a JWT token that proves the user is logged in
+      // expiresIn: '1d' means the token expires after 1 day
       const token = jwt.sign(
         { username: user.username },
         process.env.JWT_SECRET,
-        { expiresIn: '7d' }
+        { expiresIn: '1d' }
       );
 
+      // Example response:
+      // {
+      //   message: "User logged in",
+      //   token: "jwtToken...",
+      //   username: "ash"
+      // }
+
+      // Send the token and username back to the frontend
       res.json({
         message: 'User logged in',
         token,
         username: user.username
       });
     } else {
+      // User was not found or password was incorrect
       res.status(401).send('Invalid username or password');
     }
   } catch (error) {
+    // Something went wrong while logging in
     res.status(500).send('Login error');
   }
 });
 
-// GET request handler for the /api/pokemon endpoint
+// Route for getting one page/range of Pokémon
 app.get('/api/pokemon', async (req, res) => {
-  const { page = 1, limit = 48 } = req.query; // Get pagination parameters from the query string
-  const offset = (page - 1) * limit; // Calculate the offset
+  // Example frontend request:
+  // /api/pokemon?page=2&limit=48
+  //
+  // page = which page of Pokémon to show
+  // limit = how many Pokémon to return on that page
+  const { page = 1, limit = 48 } = req.query;
+
+  // Convert page + limit into the offset format PokeAPI expects
+  //
+  // Example:
+  // page = 2
+  // limit = 48
+  // offset = (2 - 1) * 48 = 48
+  //
+  // Meaning:
+  // skip the first 48 Pokémon, then return the next 48
+  const offset = (page - 1) * limit;
 
   try {
-    const response = await axios.get(`${BASE_URL}/pokemon?offset=${offset}&limit=${limit}`); // Fetch Pokémon data from the PokeAPI using variables defined above
-    res.json(response.data); // Send the fetched data as a JSON response
+    // Fetch that specific range/page of Pokémon from PokeAPI
+    // Example PokeAPI request:
+    // /pokemon?offset=48&limit=48
+    const response = await axios.get(
+      `${BASE_URL}/pokemon?offset=${offset}&limit=${limit}`
+    );
+
+    // Example response.data used by the frontend:
+    // {
+    //   count: 1302,
+    //   results: [
+    //     { name: "venonat", url: "https://pokeapi.co/api/v2/pokemon/48/" },
+    //     { name: "venomoth", url: "https://pokeapi.co/api/v2/pokemon/49/" }
+    //   ]
+    // }
+    //
+    // Frontend uses:
+    // res.data.results -> Pokémon for the current page
+    // res.data.count -> total pages calculation
+    res.json(response.data);
   } catch (error) {
-    res.status(500).json({ error: error.message }); // Send an error response if the fetch fails
+    // Send an error if the PokeAPI request fails
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -137,38 +204,55 @@ app.get('/api/pokemon/:name', async (req, res) => {
   }
 });
 
+// Gets the logged-in user's favorite Pokémon
 app.get('/api/users/favorites', authenticateUser, async (req, res) => {
   try {
+    // Connect to the users collection
     const db = await connectToDatabase();
     const collection = db.collection('users');
 
+    // Find user by email if they used Google login, otherwise by username
     const userQuery = req.user.email
       ? { email: req.user.email }
       : { username: req.user.username };
 
+    // Example userQuery:
+    // { username: "ash" }
+    // or
+    // { email: "ash@example.com" }
+
     const user = await collection.findOne(userQuery);
 
+    // If the token is valid but the user no longer exists
     if (!user) {
       return res.status(404).send('User not found');
     }
 
+    // Example response:
+    // ["pikachu", "charizard"]
     res.json(user.favorites || []);
   } catch (error) {
     res.status(500).send('Failed to get favorites');
   }
 });
 
+// Adds a Pokémon to the logged-in user's favorites
 app.post('/api/users/favorites', authenticateUser, async (req, res) => {
+  // Example request body:
+  // { pokemonName: "pikachu" }
   const { pokemonName } = req.body;
 
+  // Make sure a Pokémon name was sent
   if (!pokemonName) {
     return res.status(400).send('Pokemon name is required');
   }
 
   try {
+    // Connect to the users collection
     const db = await connectToDatabase();
     const collection = db.collection('users');
 
+    // $addToSet adds the Pokémon only if it is not already in favorites
     await collection.updateOne(
       req.user.email ? { email: req.user.email } : { username: req.user.username },
       { $addToSet: { favorites: pokemonName } }
@@ -180,13 +264,18 @@ app.post('/api/users/favorites', authenticateUser, async (req, res) => {
   }
 });
 
+// Removes a Pokémon from the logged-in user's favorites
 app.delete('/api/users/favorites/:pokemonName', authenticateUser, async (req, res) => {
+  // Example request:
+  // DELETE /api/users/favorites/pikachu
   const { pokemonName } = req.params;
 
   try {
+    // Connect to the users collection
     const db = await connectToDatabase();
     const collection = db.collection('users');
 
+    // $pull removes the Pokémon name from the favorites array
     await collection.updateOne(
       req.user.email ? { email: req.user.email } : { username: req.user.username },
       { $pull: { favorites: pokemonName } }
@@ -198,29 +287,43 @@ app.delete('/api/users/favorites/:pokemonName', authenticateUser, async (req, re
   }
 });
 
-// Route to handle Google login/signup
+// Route for Google login/signup
 app.post('/api/users/google', async (req, res) => {
+  // Google sends a credential token from the frontend
+  // Example request body:
+  // { credential: "googleCredentialToken..." }
   const { credential } = req.body;
 
+  // Make sure the credential was sent
   if (!credential) {
     return res.status(400).send('Google credential is required');
   }
 
   try {
+    // Verify the Google credential with Google's servers
     const ticket = await googleClient.verifyIdToken({
       idToken: credential,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
 
+    // Get the verified Google user info
     const payload = ticket.getPayload();
 
+    // Example payload fields used:
+    // {
+    //   sub: "googleUserId...",
+    //   email: "ash@example.com",
+    //   name: "Ash Ketchum"
+    // }
     const googleId = payload.sub;
     const email = payload.email;
     const username = payload.name || email;
 
+    // Connect to the users collection
     const db = await connectToDatabase();
     const collection = db.collection('users');
 
+    // Find an existing Google user by googleId or email
     let user = await collection.findOne({
       $or: [
         { googleId },
@@ -228,6 +331,7 @@ app.post('/api/users/google', async (req, res) => {
       ]
     });
 
+    // If the Google user does not exist yet, create a new account
     if (!user) {
       await collection.insertOne({
         username,
@@ -237,18 +341,28 @@ app.post('/api/users/google', async (req, res) => {
         favorites: [],
       });
 
+      // Fetch the newly created user
       user = await collection.findOne({ googleId });
     }
 
+    // Create a login token for this Google user
     const token = jwt.sign(
       {
         username: user.username,
         email: user.email,
       },
       process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '1d' } // Token expires after 1 day
     );
 
+    // Example response:
+    // {
+    //   message: "Google login successful",
+    //   token: "jwtToken...",
+    //   username: "Ash Ketchum"
+    // }
+
+    // Send login data back to the frontend
     res.json({
       message: 'Google login successful',
       token,
@@ -256,14 +370,10 @@ app.post('/api/users/google', async (req, res) => {
     });
   } catch (error) {
     console.error('Google auth error:', error);
+
+    // Send error if Google verification or login fails
     res.status(401).send('Google authentication failed');
   }
-});
-
-const contactLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 3,
-  message: 'Too many messages sent. Please try again later.',
 });
 
 app.post('/api/contact', contactLimiter, async (req, res) => {
@@ -308,12 +418,12 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
       replyTo: email,
       subject: `PokéWorld Contact: ${subject}`,
       text: `
-Name: ${name}
-Email: ${email}
-Subject: ${subject}
+        Name: ${name}
+        Email: ${email}
+        Subject: ${subject}
 
-Message:
-${message}
+        Message:
+        ${message}
       `,
     });
 

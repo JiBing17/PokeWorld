@@ -29,70 +29,120 @@ import {
 } from './utils/constants';
 
 export default function Home() {
-  const [allPokemonList, setAllPokemonList] = useState([]); // name + url for all ~1118
-  const [pokemonData, setPokemonData] = useState([]); // paginated results for current page
-  const [enrichedPagePokemon, setEnrichedPagePokemon] = useState([]); // enriched for current page
-  const [isLoading, setIsLoading] = useState(false);
-  const [isPageEnriching, setIsPageEnriching] = useState(false);
-  const [isSearchEnriching, setIsSearchEnriching] = useState(false);
-  const [error, setError] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [favorites, setFavorites] = useState({});
-  const [selectedGen, setSelectedGen] = useState('all'); // 'all' or 1–9
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const [showAuthPopup, setShowAuthPopup] = useState(false);
-  const { isAuthenticated } = useAuth();
-  const [enrichedSearchResults, setEnrichedSearchResults] = useState([]);
+  const [allPokemonList, setAllPokemonList] = useState([]); // full Pokémon list with name + url, used for search
+  const [pokemonData, setPokemonData] = useState([]); // basic Pokémon list for the current page
+  const [enrichedPagePokemon, setEnrichedPagePokemon] = useState([]); // current page Pokémon with id, generation, spriteUrl, and types
+  const [isLoading, setIsLoading] = useState(false); // true while fetching the basic current page Pokémon
+  const [isPageEnriching, setIsPageEnriching] = useState(false); // true while adding extra details to current page Pokémon
+  const [isSearchEnriching, setIsSearchEnriching] = useState(false); // true while adding extra details to search results
+  const [error, setError] = useState(null); // stores fetch errors so the UI can show an error message
+  const [currentPage, setCurrentPage] = useState(1); // current pagination page number
+  const [totalPages, setTotalPages] = useState(1); // total number of pages based on Pokémon count
+  const [favorites, setFavorites] = useState({}); // favorite map, example: { pikachu: true, charizard: true }
+  const [selectedGen, setSelectedGen] = useState('all'); // selected generation filter, either 'all' or 1–9
+  const [searchQuery, setSearchQuery] = useState(''); // instant search input value as the user types
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(''); // delayed search value used after typing pauses
+  const [showAuthPopup, setShowAuthPopup] = useState(false); // controls whether the login/signup popup is shown
+  const { isAuthenticated } = useAuth(); // tracks login state from auth context
+  const [enrichedSearchResults, setEnrichedSearchResults] = useState([]); // search results with id, generation, spriteUrl, and types
 
+  // Stores already-enriched Pokémon by ( name -> obj ). caching doesnt affect UI so use useRef to prevent rerenders
   const enrichedPokemonCache = useRef({});
 
   const enrichWithCache = async (pokemonList) => {
+    // Example input:
+    // [
+    //   { name: 'bulbasaur', url: 'https://pokeapi.co/api/v2/pokemon/1/' },
+    //   { name: 'ivysaur', url: 'https://pokeapi.co/api/v2/pokemon/2/' }
+    // ]
+
+    // Only keep Pokémon that are not already cached
     const missingPokemon = pokemonList.filter(
       (pokemon) => !enrichedPokemonCache.current[pokemon.name]
     );
 
     if (missingPokemon.length > 0) {
+      // Enrich only the Pokémon we have not loaded before
       const enriched = await enrichPokemonList(missingPokemon);
 
+      // Example cached item:
+      // enrichedPokemonCache.current['ivysaur'] = {
+      //   name: 'ivysaur',
+      //   id: 2,
+      //   generation: 1,
+      //   spriteUrl: '...',
+      //   types: [...]
+      // }
+
+      // Save each enriched Pokémon in the cache by name
       enriched.forEach((pokemon) => {
         enrichedPokemonCache.current[pokemon.name] = pokemon;
       });
     }
 
+    // Example output:
+    // [
+    //   { name: 'bulbasaur', id: 1, generation: 1, spriteUrl: '...', types: [...] },
+    //   { name: 'ivysaur', id: 2, generation: 1, spriteUrl: '...', types: [...] }
+    // ]
+
+    // Return enriched Pokémon in the same order as the input list
     return pokemonList
       .map((pokemon) => enrichedPokemonCache.current[pokemon.name])
       .filter(Boolean);
   };
 
+  // Fetches favorites and stores them in state
   const fetchFavorites = async () => {
     try {
+      // Example favoriteMap:
+      // {
+      //   pikachu: true,
+      //   charizard: true
+      // }
       const favoriteMap = await fetchUserFavorites();
+
+      // Updates the favorites state used by Pokémon cards
       setFavorites(favoriteMap);
     } catch (error) {
       console.error('Failed to fetch favorites:', error);
+
+      // If fetching fails, reset favorites to an empty object
       setFavorites({});
     }
   };
 
-  useEffect(() => {
+  useEffect(() => { // Fetches user's favorite Pokémon when authentication state changes
     fetchFavorites();
   }, [isAuthenticated]);
 
+  // Waits until the user stops typing before running the search
   useEffect(() => {
+    // Example:
+    // User types "char"
+    // After 350ms, debouncedSearchQuery becomes "char"
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
     }, 350);
 
+    // Clears the old timer if the user types again before 350ms
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // 1) Fetch all Pokémon names+URLs once, for universal search
+  // Fetches the full Pokémon list once when the page first loads
   useEffect(() => {
     const fetchAll = async () => {
       try {
+        // Example response:
+        // [
+        //   { name: "bulbasaur", url: "https://pokeapi.co/api/v2/pokemon/1/" },
+        //   { name: "ivysaur", url: "https://pokeapi.co/api/v2/pokemon/2/" }
+        // ]
+
+        // Gets up to 2000 Pokémon so search can check the full list
         const res = await axios.get(`${POKEMON_URL}?limit=2000`);
+
+        // Stores the list for universal search
         setAllPokemonList(res.data.results);
       } catch (err) {
         console.error('Error fetching full Pokémon list:', err);
@@ -102,21 +152,42 @@ export default function Home() {
     fetchAll();
   }, []);
 
-  // 2) Fetch paginated Pokémon (48 per page)
+  // Fetches one page of Pokémon whenever currentPage changes
   useEffect(() => {
     const fetchPage = async () => {
+      // Start loading and clear any previous error
       setIsLoading(true);
       setError(null);
 
       try {
-        const res = await axios.get(`${POKEMON_URL}?page=${currentPage}&limit=${PAGE_SIZE}`);
+        // Example request:
+        // /pokemon?page=2&limit=48
+        //
+        // Backend uses:
+        // page = 2
+        // limit = 48
+        // offset = (page - 1) * limit = 48
+        const res = await axios.get(
+          `${POKEMON_URL}?page=${currentPage}&limit=${PAGE_SIZE}`
+        );
+
+        // Example res.data.results: - list of pokemons for current page
+        // [
+        //   { name: "venonat", url: "https://pokeapi.co/api/v2/pokemon/48/" },
+        //   { name: "venomoth", url: "https://pokeapi.co/api/v2/pokemon/49/" }
+        // ]
         const results = res.data.results;
 
+        // Store the Pokémon for the current page
         setPokemonData(results);
+
+        // Calculate how many pages exist based on the total count
         setTotalPages(Math.ceil(res.data.count / PAGE_SIZE));
       } catch (err) {
+        // Save error so the UI can show the error screen
         setError(err);
       } finally {
+        // Stop loading after success or failure
         setIsLoading(false);
       }
     };
@@ -124,31 +195,46 @@ export default function Home() {
     fetchPage();
   }, [currentPage]);
 
-  // 3) Enrich current page Pokémon with id, generation, spriteUrl, and types
+  // Enriches the current page Pokémon whenever pokemonData changes
   useEffect(() => {
+    // Prevents old async requests from updating state after pokemonData changes - multiple useEffects and newestest one finishes first before the old one, keep new one
     let isCancelled = false;
 
     const enrichPagePokemon = async () => {
+      // If the current page has no Pokémon, clear the enriched list
       if (pokemonData.length === 0) {
         setEnrichedPagePokemon([]);
         return;
       }
 
+      // Show loading state while adding id, generation, spriteUrl, and types
       setIsPageEnriching(true);
 
       try {
+        // Example input:
+        // [
+        //   { name: "bulbasaur", url: "https://pokeapi.co/api/v2/pokemon/1/" }
+        // ]
         const enriched = await enrichWithCache(pokemonData);
 
+        // Example output:
+        // [
+        //   { name: "bulbasaur", id: 1, generation: 1, spriteUrl: ".../1.png", types: [...] }
+        // ]
+
+        // Only update state if this request is still the latest one
         if (!isCancelled) {
           setEnrichedPagePokemon(enriched);
         }
       } catch (err) {
         console.error('Error enriching page Pokémon:', err);
 
+        // Clear enriched data if enrichment fails
         if (!isCancelled) {
           setEnrichedPagePokemon([]);
         }
       } finally {
+        // Stop loading only if this request is still active
         if (!isCancelled) {
           setIsPageEnriching(false);
         }
@@ -157,43 +243,74 @@ export default function Home() {
 
     enrichPagePokemon();
 
+    // Marks this request as outdated if pokemonData changes or component unmounts
     return () => {
       isCancelled = true;
     };
   }, [pokemonData]);
 
-  // 4) Build enrichedSearchResults when searchQuery changes
+  // Builds enriched search results whenever the debounced search text changes
   useEffect(() => {
+    // Prevents an old search from updating state after a newer search starts - multiple useEffects and newestest one finishes first before the old one, keep new one
     let isCancelled = false;
 
     const enrichSearchResults = async () => {
+      // If the search is empty, clear results and stop search loading
       if (debouncedSearchQuery.trim() === '') {
         setEnrichedSearchResults([]);
         setIsSearchEnriching(false);
         return;
       }
 
+      // Show loading while search results are being enriched
       setIsSearchEnriching(true);
 
       try {
+        // Example search:
+        // debouncedSearchQuery = "char"
         const lower = debouncedSearchQuery.toLowerCase();
 
+        // Example allPokemonList:
+        // [
+        //   { name: "charmander", url: "https://pokeapi.co/api/v2/pokemon/4/" },
+        //   { name: "charmeleon", url: "https://pokeapi.co/api/v2/pokemon/5/" },
+        //   { name: "squirtle", url: "https://pokeapi.co/api/v2/pokemon/7/" }
+        // ]
+
+        // Find names that include the search text, then limit the result count
         const matches = allPokemonList
           .filter((p) => p.name.toLowerCase().includes(lower))
           .slice(0, SEARCH_RESULT_LIMIT);
 
+        // Example matches for "char":
+        // [
+        //   { name: "charmander", url: "https://pokeapi.co/api/v2/pokemon/4/" },
+        //   { name: "charmeleon", url: "https://pokeapi.co/api/v2/pokemon/5/" }
+        // ]
+
+        // Enrich matches with id, generation, spriteUrl, and types
+        // Also saves missing enriched Pokémon into the cache
         const enriched = await enrichWithCache(matches);
 
+        // Example enriched:
+        // [
+        //   { name: "charmander", id: 4, generation: 1, spriteUrl: ".../4.png", types: [...] },
+        //   { name: "charmeleon", id: 5, generation: 1, spriteUrl: ".../5.png", types: [...] }
+        // ]
+
+        // Only save results if this is still the latest search
         if (!isCancelled) {
           setEnrichedSearchResults(enriched);
         }
       } catch (err) {
         console.error('Error enriching search results:', err);
 
+        // Clear search results if enrichment fails
         if (!isCancelled) {
           setEnrichedSearchResults([]);
         }
       } finally {
+        // Stop loading only if this search is still active
         if (!isCancelled) {
           setIsSearchEnriching(false);
         }
@@ -202,18 +319,40 @@ export default function Home() {
 
     enrichSearchResults();
 
+    // Marks this search as outdated if the text/list changes or component unmounts
     return () => {
       isCancelled = true;
     };
   }, [debouncedSearchQuery, allPokemonList]);
 
-  // 5) Decide which list to display:
-  //    - If searchQuery non-empty: use enrichedSearchResults
-  //    - Else: take enrichedPagePokemon and apply selectedGen/favorites filter
+  // Chooses which Pokémon list should be shown on the page
   const dataToDisplay = useMemo(() => {
+    // useMemo recalculates this list only when search/page/filter data changes
+
+    // If the user is searching, show search results instead of page results
     if (debouncedSearchQuery.trim() !== '') {
+      // Example enrichedSearchResults:
+      // [
+      //   {
+      //     name: "charmander",
+      //     url: "https://pokeapi.co/api/v2/pokemon/4/",
+      //     id: 4,
+      //     generation: 1,
+      //     spriteUrl: ".../4.png",
+      //     types: [...]
+      //   },
+      //   {
+      //     name: "charizard",
+      //     url: "https://pokeapi.co/api/v2/pokemon/6/",
+      //     id: 6,
+      //     generation: 1,
+      //     spriteUrl: ".../6.png",
+      //     types: [...]
+      //   }
+      // ]
       let list = [...enrichedSearchResults];
 
+      // If a generation is selected, only keep Pokémon from that generation
       if (selectedGen !== 'all') {
         list = list.filter((p) => p.generation === Number(selectedGen));
       }
@@ -221,8 +360,29 @@ export default function Home() {
       return list;
     }
 
+    // If not searching, show the enriched Pokémon from the current page
+    // Example enrichedPagePokemon:
+    // [
+    //   {
+    //     name: "bulbasaur",
+    //     url: "https://pokeapi.co/api/v2/pokemon/1/",
+    //     id: 1,
+    //     generation: 1,
+    //     spriteUrl: ".../1.png",
+    //     types: [...]
+    //   },
+    //   {
+    //     name: "ivysaur",
+    //     url: "https://pokeapi.co/api/v2/pokemon/2/",
+    //     id: 2,
+    //     generation: 1,
+    //     spriteUrl: ".../2.png",
+    //     types: [...]
+    //   }
+    // ]
     let list = [...enrichedPagePokemon];
 
+    // If a generation is selected, only keep Pokémon from that generation
     if (selectedGen !== 'all') {
       list = list.filter((p) => p.generation === Number(selectedGen));
     }
@@ -235,53 +395,93 @@ export default function Home() {
     selectedGen,
   ]);
 
+  // Toggles a Pokémon as favorite when the user clicks the favorite button
   const toggleFavorite = async (name) => {
+    // Check if the user is logged in
     const token = localStorage.getItem('token');
 
+    // If there is no token, show the login/signup popup
     if (!token) {
       setShowAuthPopup(true);
       return;
     }
 
     try {
+      // Example before:
+      // favorites = {
+      //   pikachu: true
+      // }
+      //
+      // toggleFavorite("pikachu") removes it
+      // toggleFavorite("charizard") adds it
+
       const updatedFavorites = await toggleUserFavorite(name, favorites);
+
+      // Example after adding charizard:
+      // {
+      //   pikachu: true,
+      //   charizard: true
+      // }
+
+      // Update state so the heart icon changes in the UI
       setFavorites(updatedFavorites);
     } catch (error) {
       console.error('Failed to update favorite:', error);
     }
   };
 
-  // 6) Handle generation click: jump to page if not searching
+  // Handles generation filter clicks
   const handleGenClick = (gen) => {
+    // If searching, only filter the current search results by generation
     if (searchQuery.trim() !== '') {
       setSelectedGen(gen);
     } else {
+      // If "All Pokémon" is selected, remove the generation filter
       if (gen === 'all') {
         setSelectedGen(gen);
       } else {
+        // Example:
+        // gen = 3
+        // FIRST_ID_BY_GEN[3] = 252
+        // PAGE_SIZE = 48
+        // targetPage = Math.ceil(252 / 48) = 6
+
+        // Find the first Pokémon ID for the selected generation
         const firstId = FIRST_ID_BY_GEN[gen];
+
+        // Jump to the page where that generation starts
         const targetPage = Math.ceil(firstId / PAGE_SIZE);
 
+        // Update the selected generation and page
         setSelectedGen(gen);
         setCurrentPage(targetPage);
       }
     }
   };
 
+  // Returns chip styles based on whether the generation is selected
   const getChipSx = (isSelected) => ({
     px: 0.75,
     height: 36,
     borderRadius: '999px',
     fontWeight: 800,
+
+    // Selected chips are red; unselected chips are white
     border: isSelected ? '1px solid #C22E28' : '1px solid #E5E7EB',
     bgcolor: isSelected ? '#C22E28' : '#FFFFFF',
     color: isSelected ? '#FFFFFF' : '#374151',
+
+    // Gives selected and unselected chips different shadow strength
     boxShadow: isSelected
       ? '0 8px 18px rgba(194, 46, 40, 0.22)'
       : '0 4px 12px rgba(15, 23, 42, 0.06)',
+
+    // Adds spacing inside the chip label
     '& .MuiChip-label': {
       px: 1.25,
     },
+
+    // Hover color changes depending on selected state
     '&:hover': {
       bgcolor: isSelected ? '#B22222' : '#FFF1F2',
       borderColor: '#C22E28',
@@ -289,9 +489,17 @@ export default function Home() {
     },
   });
 
+  // True when the user typed something but debounce has not updated yet
   const isTypingSearch = searchQuery.trim() !== debouncedSearchQuery.trim();
-  const isSearching = searchQuery.trim() !== '' && (isTypingSearch || isSearchEnriching);
+
+  // True when a search is active or search results are being prepared
+  const isSearching =
+    searchQuery.trim() !== '' && (isTypingSearch || isSearchEnriching);
+
+  // True when the normal page data is loading or being enriched
   const isPageBusy = isLoading || isPageEnriching;
+
+  // Show the spinner during search, or when page data is loading and nothing is displayed yet
   const shouldShowLoading = isSearching || (isPageBusy && dataToDisplay.length === 0);
 
   if (error) {

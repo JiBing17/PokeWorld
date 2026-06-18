@@ -15,26 +15,24 @@ import {
     Close,
     ArrowForward,
 } from '@mui/icons-material';
-import { typeColors } from '../../utils/constants';
+import { typeColors, PLACEHOLDER } from '../../utils/constants';
 
-const PLACEHOLDER =
-    'https://upload.wikimedia.org/wikipedia/commons/b/b1/Loading_icon.gif';
 
 function PokemonCard({
-    pokemon,
-    isFavorite = false,
-    onFavoriteClick,
-    onRemoveClick,
-    to,
+    pokemon, // Pokémon object shown in the card
+    isFavorite = false, // whether this Pokémon is currently favorited
+    onFavoriteClick, // optional function for clicking the heart button
+    onRemoveClick, // optional function for removing from favorites page
+    to, // route/path to open this Pokémon's details page
 }) {
+
+    // get the passed down pokemon's information
     const name = pokemon.name;
     const id = pokemon.id;
     const generation = pokemon.generation;
-
     const image =
         pokemon.spriteUrl ||
-        pokemon?.sprites?.other?.['official-artwork']?.front_default;
-
+        pokemon?.sprites?.other?.['official-artwork']?.front_default || PLACEHOLDER;
     const primaryType = pokemon?.types?.[0]?.type?.name;
     const cardColor = typeColors[primaryType] || '#C22E28';
 
@@ -211,7 +209,7 @@ function PokemonCard({
                         }}
                     >
                         <Chip
-                            label={generation ? `Gen ${generation}` : 'View details'}
+                            label={generation ? `Generation ${generation}` : 'View details'}
                             size="small"
                             sx={{
                                 bgcolor: primaryType ? `${cardColor}20` : '#FEF2F2',

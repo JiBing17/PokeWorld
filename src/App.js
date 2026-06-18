@@ -14,7 +14,7 @@ import SetGallery from './components/pokemonTCG/SetGallery.js';
 // Sets up the router and provides authentication context to all routes
 function App() {
     return (
-        <AuthProvider>
+        <AuthProvider> { /** Provides authentication state to the entire app **/ }
             <Router>
                 <Routes>
                     {/** Home page is public and loads first **/}
@@ -28,7 +28,7 @@ function App() {
                     <Route path="/sets" element={<SetGallery />} />
                     <Route path="/pokemon/favorites" element={<Favorites />} />
                     <Route path="/contact" element={<Contact />} />
-                    {/* <Route path="/items" element={<Items />} /> */}
+                    {/* needs work <Route path="/items" element={<Items />} /> */} 
                 </Routes>
             </Router>
         </AuthProvider>

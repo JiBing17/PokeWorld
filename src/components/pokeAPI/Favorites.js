@@ -21,66 +21,110 @@ import { useAuth } from '../../AuthContext';
 import Authpopup from '../Authpopup';
 import { fetchUserFavorites, removeUserFavorite } from '../../utils/favoritesApi';
 import PokemonCard from './PokemonCard';
-
-const BASE_URL = "http://localhost:5000/api";
-const POKEMON_URL = `${BASE_URL}/pokemon`;
+import { POKEMON_URL, BASE_URL } from '../../utils/constants';
 
 function Favorites() {
+
   const [favorites, setFavorites] = useState({});
   const [pokemonDetails, setPokemonDetails] = useState({});
   const [sortOrder, setSortOrder] = useState('recent');
   const [showAuthPopup, setShowAuthPopup] = useState(false);
-
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
+  // Fetches favorites and stores them in state
   const fetchFavorites = async () => {
     try {
+      // Example favoriteMap:
+      // {
+      //   pikachu: true,
+      //   charizard: true
+      // }
       const favoriteMap = await fetchUserFavorites();
+
+      // Updates the favorites state used by Pokémon cards
       setFavorites(favoriteMap);
     } catch (error) {
       console.error('Failed to fetch favorites:', error);
+
+      // If fetching fails, reset favorites to an empty object
       setFavorites({});
     }
   };
 
-  useEffect(() => {
-    fetchFavorites();
+  useEffect(() => { // Fetches user's favorite Pokémon when authentication state changes
+    fetchFavorites(); 
   }, [isAuthenticated]);
 
+  // Fetches full Pokémon details for each favorite whenever favorites changes
   useEffect(() => {
     const fetchDetails = async () => {
+      // Stores details by Pokémon name
+      // Example:
+      // {
+      //   pikachu: { name: "pikachu", id: 25, types: [...], sprites: {...} },
+      //   charizard: { name: "charizard", id: 6, types: [...], sprites: {...} }
+      // }
       const details = {};
 
+      // favorites is a map like:
+      // {
+      //   pikachu: true,
+      //   charizard: true
+      // }
       for (const name in favorites) {
         try {
+          // Fetch full data for this favorite Pokémon
           const { data } = await axios.get(`${POKEMON_URL}/${name}`);
+
+          // Save the details using the Pokémon name as the key
           details[name] = data;
         } catch (error) {
           console.error("Failed to fetch details for:", name, error);
         }
       }
 
+      // Store all fetched favorite Pokémon details in state
       setPokemonDetails(details);
     };
 
     fetchDetails();
   }, [favorites]);
 
+  // Removes a Pokémon from the user's favorites
   const removeFavorite = async (name) => {
+    // Check if the user is logged in
     const token = localStorage.getItem('token');
 
+    // If no token exists, show the login/signup popup
     if (!token) {
       setShowAuthPopup(true);
       return;
     }
 
     try {
+      // Remove favorite from the backend
       await removeUserFavorite(name);
 
+      // Example before:
+      // {
+      //   pikachu: true,
+      //   charizard: true
+      // }
+      //
+      // removeFavorite("pikachu") makes:
+      // {
+      //   charizard: true
+      // }
+
+      // Update local favorites state after backend succeeds
       setFavorites((prev) => {
+        // Copy previous favorites so state is not mutated directly
         const updatedFavorites = { ...prev };
+
+        // Remove this Pokémon from the copied object
         delete updatedFavorites[name];
+
         return updatedFavorites;
       });
     } catch (error) {
@@ -88,18 +132,31 @@ function Favorites() {
     }
   };
 
+  // Sorts favorite Pokémon names based on the selected sort option
   const handleSort = (a, b) => {
+    // Name Ascending: "bulbasaur" before "charizard"
     if (sortOrder === 'asc') {
       return a.localeCompare(b);
     }
 
+    // Name Descending: "charizard" before "bulbasaur"
     if (sortOrder === 'desc') {
       return b.localeCompare(a);
     }
 
+    // Most Recent: keep the current order
     return 0;
   };
 
+  // Converts favorites map into a sorted array of Pokémon names
+  // Example favorites:
+  // {
+  //   pikachu: true,
+  //   charizard: true
+  // }
+  //
+  // Example sortedFavorites:
+  // ["charizard", "pikachu"]
   const sortedFavorites = Object.keys(favorites).sort(handleSort);
 
   return (
@@ -399,7 +456,8 @@ function Favorites() {
           </Box>
         </Box>
       </Box>
-
+      
+      {/** Authentication popup shown when state of boolean is true due to doing user specific action while not logged in **/} 
       {showAuthPopup && (
         <Authpopup
           onClose={() => setShowAuthPopup(false)}

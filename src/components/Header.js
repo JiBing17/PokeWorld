@@ -17,6 +17,7 @@ function Header() {
     const { isAuthenticated, setIsAuthenticated } = useAuth();
     const [showAuthPopup, setShowAuthPopup] = useState(false);
 
+    // Handles user logout by clearing localStorage and updating authentication state
     const handleLogout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('username');
@@ -106,6 +107,7 @@ function Header() {
                 </Toolbar>
             </AppBar>
 
+            {/* Conditional rendering login/signup component if state is true */}
             {showAuthPopup && (
                 <AuthPopup onClose={() => setShowAuthPopup(false)} />
             )}

@@ -8,79 +8,122 @@ import {
 } from '@mui/material';
 import { useAuth } from '../AuthContext';
 import { GoogleLogin } from '@react-oauth/google';
+import { BASE_URL } from '../utils/constants';
 
 function AuthPopup({ onClose, onSuccess }) {
-    const { setIsAuthenticated } = useAuth();
 
-    const [isSignup, setIsSignup] = useState(false);
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
+    const { setIsAuthenticated } = useAuth(); // lets this popup update the global login state
+    const [isSignup, setIsSignup] = useState(false); // false = login mode, true = signup mode
+    const [username, setUsername] = useState(''); // stores the username typed into the form
+    const [password, setPassword] = useState(''); // stores the password typed into the form
+    const [error, setError] = useState(''); // stores an error message to show in the popup
 
+    // Handles a successful Google login/signup response
     const handleGoogleSuccess = async (credentialResponse) => {
-        setError('');
+    // Clear any previous error message
+    setError('');
 
-        if (!credentialResponse.credential) {
-            setError('Google credential was not received.');
-            return;
+    // Make sure Google returned a credential token
+    if (!credentialResponse.credential) {
+        setError('Google credential was not received.');
+        return;
+    }
+
+    try {
+        // Example request body:
+        // {
+        //   credential: "googleCredentialToken..."
+        // }
+        //
+        // Backend verifies the Google credential and returns app login data
+        const response = await axios.post(`${BASE_URL}/users/google`, {
+        credential: credentialResponse.credential,
+        });
+
+        // Example response.data:
+        // {
+        //   token: "jwtToken...",
+        //   username: "Ash Ketchum"
+        // }
+
+        // Save login info so the user stays logged in after refresh
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('username', response.data.username);
+
+        // Update global auth state
+        setIsAuthenticated(true);
+
+        // Run success callback, like refreshing favorites
+        if (onSuccess) {
+        onSuccess();
         }
 
-        try {
-            const response = await axios.post('http://localhost:5000/api/users/google', {
-                credential: credentialResponse.credential,
-            });
-
-            localStorage.setItem('token', response.data.token);
-            localStorage.setItem('username', response.data.username);
-
-            setIsAuthenticated(true);
-
-            if (onSuccess) {
-                onSuccess();
-            }
-
-            onClose();
-        } catch (err) {
-            setError(err.response?.data || 'Google authentication failed.');
-        }
+        // Close the popup after login succeeds
+        onClose();
+    } catch (err) {
+        // Show backend error if available, otherwise show fallback message
+        setError(err.response?.data || 'Google authentication failed.');
+    }
     };
 
+    // Handles normal login or signup form submission
     const handleSubmit = async () => {
-        setError('');
+    // Clear any previous error message
+    setError('');
 
-        const cleanedUsername = username.trim();
+    // Remove extra spaces around the username
+    const cleanedUsername = username.trim();
 
-        if (!cleanedUsername || !password) {
-            setError('Username and password are required.');
-            return;
+    // Make sure both fields are filled in
+    if (!cleanedUsername || !password) {
+        setError('Username and password are required.');
+        return;
+    }
+
+    try {
+        // If the popup is in signup mode, create the account first
+        if (isSignup) {
+        // Example request body:
+        // {
+        //   username: "ash",
+        //   password: "pikachu123"
+        // }
+        await axios.post(`${BASE_URL}/users/register`, {
+            username: cleanedUsername,
+            password,
+        });
         }
 
-        try {
-            if (isSignup) {
-                await axios.post('http://localhost:5000/api/users/register', {
-                    username: cleanedUsername,
-                    password,
-                });
-            }
+        // After signup, or if already in login mode, log the user in
+        const response = await axios.post(`${BASE_URL}/users/login`, {
+        username: cleanedUsername,
+        password,
+        });
 
-            const response = await axios.post('http://localhost:5000/api/users/login', {
-                username: cleanedUsername,
-                password,
-            });
+        // Example response.data:
+        // {
+        //   token: "jwtToken...",
+        //   username: "ash"
+        // }
 
-            localStorage.setItem('token', response.data.token);
-            localStorage.setItem('username', response.data.username);
+        // Save login info so the user stays logged in after refresh
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('username', response.data.username);
 
-            setIsAuthenticated(true);
+        // Update global auth state
+        setIsAuthenticated(true);
 
-            if (onSuccess) {
-                onSuccess();
-            }
-
-            onClose();
-        } catch (err) {
-            setError(err.response?.data || 'Authentication failed.');
+        // Run success callback, like refreshing favorites
+        if (onSuccess) {
+        onSuccess();
         }
+
+        // Close the popup after login/signup succeeds
+        onClose();
+    } catch (err) {
+        // Show backend error if available, otherwise show fallback message
+        setError(err.response?.data || 'Authentication failed.');
+    }
     };
 
     return (

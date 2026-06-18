@@ -19,19 +19,22 @@ import MovieOutlinedIcon from "@mui/icons-material/MovieOutlined";
 import CatchingPokemonIcon from "@mui/icons-material/CatchingPokemon";
 import CollectionsBookmarkOutlinedIcon from "@mui/icons-material/CollectionsBookmarkOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import { BASE_URL } from "../utils/constants";
 
 const Contact = () => {
-  const [formData, setFormData] = useState({
+
+  const [formData, setFormData] = useState({ // state to track content being filled out from form UI
     name: "",
     email: "",
     subject: "",
     message: "",
   });
 
-  const [statusMessage, setStatusMessage] = useState("");
-  const [isSending, setIsSending] = useState(false);
+  const [statusMessage, setStatusMessage] = useState(""); // state used to display msg of fail or success after submitting form
+  const [isSending, setIsSending] = useState(false); // state for indicating whether form is currently being submitted to prevent multiple submissions and show "Sending..." text on button
 
-  const handleChange = (e) => {
+  // helper used in from when user starts typing
+  const handleChange = (e) => { 
     const { name, value } = e.target;
 
     setFormData({
@@ -39,16 +42,32 @@ const Contact = () => {
       [name]: value,
     });
   };
-
+  
+  // Handles the contact form submit
   const handleSubmit = async (e) => {
+    // Prevent the browser from refreshing the page
     e.preventDefault();
+
+    // Clear old status message and show sending state
     setStatusMessage("");
     setIsSending(true);
 
     try {
-      await axios.post("http://localhost:5000/api/contact", formData);
+      // Example formData:
+      // {
+      //   name: "Ash",
+      //   email: "ash@example.com",
+      //   subject: "Bug report",
+      //   message: "The search is not working."
+      // }
 
+      // Send the contact form data to the backend
+      await axios.post(`${BASE_URL}/contact`, formData);
+
+      // Show success message after backend sends the email
       setStatusMessage("Message sent successfully.");
+
+      // Clear the form after successful submit
       setFormData({
         name: "",
         email: "",
@@ -56,14 +75,16 @@ const Contact = () => {
         message: "",
       });
     } catch (error) {
+      // Show backend error message if available, otherwise show fallback
       setStatusMessage(
         error.response?.data || "Failed to send message. Please try again."
       );
     } finally {
+      // Stop sending state after success or failure
       setIsSending(false);
     }
   };
-
+  
   return (
     <Box
       sx={{

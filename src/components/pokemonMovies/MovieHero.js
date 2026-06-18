@@ -12,29 +12,32 @@ import {
   OpenInNew,
 } from '@mui/icons-material';
 import placeHolder from '../../static/placeholder.jpg';
-
-const POSTER_BASE_URL = 'https://image.tmdb.org/t/p/w500';
-const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/original';
+import { TMDB_BACKDROP_BASE_URL, TMDB_POSTER_BASE_URL } from '../../utils/constants';
 
 function MovieHero({
-  movie,
-  genres = {},
-  runtime,
-  label = 'Featured Movie',
-  showBackButton = false,
-  onBack,
-  onPrimaryClick,
-  primaryButtonText = 'View Details',
-  primaryButtonIcon,
+  movie, // movie object shown in the hero section
+  genres = {}, // genre id-to-name map, example: { 12: "Adventure", 16: "Animation" }
+  runtime, // optional movie runtime text, example: "96 min"
+  label = 'Featured Movie', // small label shown above the title when no back button is shown
+  showBackButton = false, // true when this hero is used on the movie details page
+  onBack, // optional function for the Back to Movies button
+  onPrimaryClick, // optional function for the main action button
+  primaryButtonText = 'View Details', // text shown inside the main action button
+  primaryButtonIcon, // optional custom icon for the main action button
 }) {
+
+  // If no movie is provided, return null
   if (!movie) return null;
 
+  // Choose the best available image for the hero background
   const heroImage = movie.backdrop_path
-    ? `${BACKDROP_BASE_URL}${movie.backdrop_path}`
+    ? `${TMDB_BACKDROP_BASE_URL}${movie.backdrop_path}` // Prefer wide backdrop image
     : movie.poster_path
-    ? `${POSTER_BASE_URL}${movie.poster_path}`
-    : placeHolder;
+    ? `${TMDB_POSTER_BASE_URL}${movie.poster_path}` // Fallback to poster image
+    : placeHolder; // Final fallback if TMDB has no image
 
+  // Get the release year from the full release date
+  // Example: "1998-07-18" becomes "1998"
   const releaseYear = movie.release_date
     ? movie.release_date.split('-')[0]
     : 'N/A';
