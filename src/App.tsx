@@ -1,0 +1,37 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Home from './Home';
+import PokemonDetails from './components/pokeAPI/PokemonDetails';
+import { AuthProvider } from './AuthContext';
+import Favorites from './components/pokeAPI/Favorites';
+import Contact from './components/Contact';
+import Movies from './components/pokemonMovies/Movies';
+import TcgMarket from './components/pokemonTCG/tcgMarket';
+import MovieDetail from './components/pokemonMovies/MovieDetail';
+import SetGallery from './components/pokemonTCG/SetGallery';
+
+// Sets up the router and provides authentication context to all routes
+function App() {
+    return (
+        <AuthProvider> { /** Provides authentication state to the entire app **/ }
+            <Router>
+                <Routes>
+                    {/** Home page is public and loads first **/}
+                    <Route path="/" element={<Home />} />
+
+                    {/** Public routes **/}
+                    <Route path="/pokemon/:pokemonName" element={<PokemonDetails />} />
+                    <Route path="/movies" element={<Movies />} />
+                    <Route path="/trading" element={<TcgMarket />} />
+                    <Route path="/movie/:id" element={<MovieDetail />} />
+                    <Route path="/sets" element={<SetGallery />} />
+                    <Route path="/pokemon/favorites" element={<Favorites />} />
+                    <Route path="/contact" element={<Contact />} />
+                    {/* needs work <Route path="/items" element={<Items />} /> */} 
+                </Routes>
+            </Router>
+        </AuthProvider>
+    );
+}
+
+export default App;
