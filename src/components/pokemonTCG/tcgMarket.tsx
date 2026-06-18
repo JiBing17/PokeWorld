@@ -6,28 +6,23 @@ import {
   IconButton,
   Grid,
   Typography,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
   CircularProgress,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   Chip,
-  Divider,
   Container,
 } from '@mui/material';
 import {
-  Close,
   NavigateBefore,
   NavigateNext,
 } from '@mui/icons-material';
-import Header from '../Header';
 import TcgMarketSearchBar from './tcgMarketSearchBar';
 import TcgMarketCard, { getMarketPrice, type TcgCard } from './tcgMarketCard';
+import TcgCardDetailDialog from './TcgCardDetailDialog';
+import PageShell from '../layout/PageShell';
+import { getErrorMessage } from '../../utils/errorUtils';
 
 // PokéTCG API endpoints
 const POKETCG_BASE = 'https://api.pokemontcg.io/v2';
@@ -243,6 +238,11 @@ export default function TcgMarket() {
     return cards;
   }, [cards, expensiveCards, showingExpensive, currentPage]);
 
+  const selectedSetName =
+    selectedSet === 'all'
+      ? 'All Sets'
+      : setsList.find((set) => set.id === selectedSet)?.name ?? 'Selected Set';
+
   const openModal = (card: TcgCard) => {
     setModalCard(card);
     setModalOpen(true);
@@ -254,9 +254,44 @@ export default function TcgMarket() {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#F6F8FC' }}>
-      {/* ====== HEADER ====== */}
-      <Header />
+    <PageShell>
+      {/* ====== HERO ====== */}
+      <Box
+        sx={{
+          pt: { xs: 10, md: 11 },
+          pb: 3,
+          px: { xs: 2, md: 4 },
+          background: 'linear-gradient(135deg, #C22E28 0%, #E85D4A 45%, #FFCC00 100%)',
+        }}
+      >
+        <Container maxWidth="lg">
+          <Typography
+            variant="h3"
+            sx={{
+              fontWeight: 900,
+              color: 'white',
+              mb: 0.75,
+              fontSize: { xs: '1.85rem', md: '2.5rem' },
+              textShadow: '0 2px 12px rgba(0,0,0,0.12)',
+            }}
+          >
+            TCG Market
+          </Typography>
+          <Typography sx={{ color: 'rgba(255,255,255,0.92)', maxWidth: 560, lineHeight: 1.7 }}>
+            Browse Pokémon TCG cards, filter by set or type, and click a card for full details.
+          </Typography>
+          <Chip
+            label={`${selectedSetName} · ${displayedCards.length} cards`}
+            sx={{
+              mt: 2,
+              bgcolor: 'rgba(255,255,255,0.22)',
+              color: 'white',
+              fontWeight: 800,
+              backdropFilter: 'blur(4px)',
+            }}
+          />
+        </Container>
+      </Box>
 
       {/* ====== FILTER BAR (sticky) ====== */}
       <Paper
@@ -356,7 +391,7 @@ export default function TcgMarket() {
       </Paper>
 
       {/* ====== CARD GRID ====== */}
-      <Container maxWidth="lg" sx={{ py: 6 }}>
+      <Container maxWidth="xl" sx={{ py: { xs: 3, md: 5 }, px: { xs: 2, md: 3 } }}>
         {isLoading ? (
           <Box
             sx={{
@@ -369,22 +404,23 @@ export default function TcgMarket() {
             }}
           >
             <CircularProgress sx={{ color: POKE_RED }} />
-
             <Typography color="text.secondary" sx={{ fontWeight: 700 }}>
               Loading cards...
             </Typography>
           </Box>
         ) : error ? (
           <Box sx={{ textAlign: 'center', mt: 4 }}>
-            <Typography color="error">Error loading cards.</Typography>
+            <Typography color="error">
+              Error loading cards: {getErrorMessage(error)}
+            </Typography>
           </Box>
         ) : displayedCards.length === 0 ? (
-          <Box
+          <Paper
+            elevation={0}
             sx={{
-              minHeight: 260,
-              bgcolor: '#FFFFFF',
-              border: '1px solid #E5E7EB',
+              minHeight: 280,
               borderRadius: 4,
+              border: '1px solid #E5E7EB',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -395,15 +431,60 @@ export default function TcgMarket() {
             <Typography variant="h6" color="text.secondary">
               No cards match your filters.
             </Typography>
-          </Box>
+          </Paper>
         ) : (
-          <Grid container spacing={3}>
-            {displayedCards.map((card) => (
-              <Grid item xs={6} sm={4} md={3} lg={2} key={card.id}>
-                <TcgMarketCard card={card} onClick={openModal} />
+          <Paper
+            elevation={0}
+            sx={{
+              borderRadius: 5,
+              border: '1px solid #E5E7EB',
+              boxShadow: '0 18px 50px rgba(15, 23, 42, 0.08)',
+              overflow: 'hidden',
+            }}
+          >
+            <Box
+              sx={{
+                px: { xs: 2, md: 3 },
+                py: 2,
+                bgcolor: '#FFFFFF',
+                borderBottom: '1px solid #E5E7EB',
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 1.5,
+              }}
+            >
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 900, color: '#111827' }}>
+                  {selectedSetName}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {displayedCards.length} cards on this page
+                  {showingExpensive ? ' · sorted by value' : ''}
+                </Typography>
+              </Box>
+              <Chip
+                label={`Page ${currentPage} of ${totalPages}`}
+                sx={{
+                  bgcolor: '#FFF1F2',
+                  color: POKE_RED,
+                  fontWeight: 800,
+                  border: '1px solid #FECACA',
+                }}
+              />
+            </Box>
+
+            <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: '#F6F8FC' }}>
+              <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
+                {displayedCards.map((card) => (
+                  <Grid item xs={6} sm={4} md={3} lg={2} key={card.id}>
+                    <TcgMarketCard card={card} onClick={openModal} />
+                  </Grid>
+                ))}
               </Grid>
-            ))}
-          </Grid>
+            </Box>
+          </Paper>
         )}
       </Container>
 
@@ -476,228 +557,11 @@ export default function TcgMarket() {
         </Box>
       )}
 
-      {/* ====== CARD DETAIL DIALOG ====== */}
-      <Dialog open={modalOpen} onClose={closeModal} maxWidth="sm" fullWidth>
-        <DialogTitle
-          sx={{
-            position: 'relative',
-            textAlign: 'center',
-            bgcolor: POKE_RED,
-            color: 'white',
-            fontSize: '1.25rem',
-            fontWeight: 'bold',
-          }}
-        >
-          {modalCard?.name}
-
-          <IconButton
-            aria-label="close"
-            onClick={closeModal}
-            sx={{
-              position: 'absolute',
-              right: 8,
-              top: 8,
-              color: 'white',
-            }}
-          >
-            <Close />
-          </IconButton>
-        </DialogTitle>
-
-        <DialogContent dividers sx={{ p: 3 }}>
-          {modalCard && (
-            <Box>
-              {/* Large Card Image */}
-              <Box
-                component="img"
-                src={modalCard.images.large}
-                alt={modalCard.name}
-                sx={{
-                  width: '260px',
-                  height: '370px',
-                  objectFit: 'contain',
-                  mb: 3,
-                  mx: 'auto',
-                  display: 'block',
-                  boxShadow: 4,
-                  borderRadius: 2,
-                }}
-              />
-
-              {/* Basic Info */}
-              <Typography variant="body1" sx={{ mb: 1 }}>
-                <strong>Set:</strong> {modalCard.set?.name} ({modalCard.set?.series})
-              </Typography>
-
-              <Typography variant="body1" sx={{ mb: 1 }}>
-                <strong>Supertype:</strong> {modalCard.supertype}
-              </Typography>
-
-              {modalCard.subtypes && modalCard.subtypes.length > 0 && (
-                <Typography variant="body1" sx={{ mb: 1 }}>
-                  <strong>Subtype:</strong> {modalCard.subtypes.join(', ')}
-                </Typography>
-              )}
-
-              {modalCard.hp && (
-                <Typography variant="body1" sx={{ mb: 1 }}>
-                  <strong>HP:</strong> {modalCard.hp}
-                </Typography>
-              )}
-
-              {modalCard.types && modalCard.types.length > 0 && (
-                <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                  {modalCard.types.map((type) => (
-                    <Chip
-                      key={type}
-                      label={type}
-                      sx={{
-                        bgcolor: '#FFF1F2',
-                        color: POKE_RED,
-                        fontWeight: 800,
-                      }}
-                    />
-                  ))}
-                </Box>
-              )}
-
-              {modalCard.rarity && (
-                <Typography variant="body1" sx={{ mb: 1 }}>
-                  <strong>Rarity:</strong> {modalCard.rarity}
-                </Typography>
-              )}
-
-              {modalCard.flavorText && (
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ fontStyle: 'italic', mb: 2 }}
-                >
-                  “{modalCard.flavorText}”
-                </Typography>
-              )}
-
-              <Divider sx={{ my: 2 }} />
-
-              {/* Attacks Section */}
-              {modalCard.attacks && modalCard.attacks.length > 0 && (
-                <Box>
-                  <Typography variant="h6" gutterBottom>
-                    Attacks
-                  </Typography>
-
-                  {modalCard.attacks.map((atk, idx) => (
-                    <Box key={idx} sx={{ mb: 2 }}>
-                      <Typography variant="subtitle2">
-                        {atk.name}{' '}
-
-                        {atk.damage && (
-                          <Typography
-                            component="span"
-                            variant="body2"
-                            color="text.secondary"
-                          >
-                            — {atk.damage}
-                          </Typography>
-                        )}
-                      </Typography>
-
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{ mb: 0.5 }}
-                      >
-                        {atk.text}
-                      </Typography>
-
-                      <Typography variant="caption" color="text.secondary">
-                        Cost: {atk.cost.join(', ')}
-                      </Typography>
-                    </Box>
-                  ))}
-                </Box>
-              )}
-
-              {/* Abilities Section */}
-              {modalCard.abilities && modalCard.abilities.length > 0 && (
-                <Box sx={{ mt: 3 }}>
-                  <Typography variant="h6" gutterBottom>
-                    Abilities
-                  </Typography>
-
-                  {modalCard.abilities.map((ab, idx) => (
-                    <Box key={idx} sx={{ mb: 2 }}>
-                      <Typography variant="subtitle2">{ab.name}</Typography>
-
-                      <Typography variant="body2" color="text.secondary">
-                        {ab.text}
-                      </Typography>
-                    </Box>
-                  ))}
-                </Box>
-              )}
-
-              {/* Weaknesses / Resistances */}
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  gap: 2,
-                  mt: 3,
-                  flexWrap: 'wrap',
-                }}
-              >
-                {modalCard.weaknesses && (
-                  <Typography variant="body2">
-                    <strong>Weaknesses:</strong>{' '}
-                    {modalCard.weaknesses
-                      .map((w) => `${w.type} ×${w.value}`)
-                      .join(', ')}
-                  </Typography>
-                )}
-
-                {modalCard.resistances && (
-                  <Typography variant="body2">
-                    <strong>Resistances:</strong>{' '}
-                    {modalCard.resistances
-                      .map((r) => `${r.type} ×${r.value}`)
-                      .join(', ')}
-                  </Typography>
-                )}
-              </Box>
-
-              {/* Retreat Cost */}
-              {modalCard.retreatCost && modalCard.retreatCost.length > 0 && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="body2">
-                    <strong>Retreat Cost:</strong>{' '}
-                    {modalCard.retreatCost.join(', ')}
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-          )}
-        </DialogContent>
-
-        <DialogActions sx={{ justifyContent: 'center', p: 2 }}>
-          <Button
-            onClick={closeModal}
-            variant="contained"
-            sx={{
-              bgcolor: POKE_RED,
-              textTransform: 'none',
-              fontWeight: 800,
-              boxShadow: 'none',
-              '&:hover': {
-                bgcolor: '#B22222',
-                boxShadow: 'none',
-              },
-            }}
-          >
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+      <TcgCardDetailDialog
+        open={modalOpen}
+        card={modalCard}
+        onClose={closeModal}
+      />
+    </PageShell>
   );
 }

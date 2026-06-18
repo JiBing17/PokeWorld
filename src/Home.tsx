@@ -1,33 +1,32 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import axios, { isAxiosError } from 'axios';
+import axios from 'axios';
 import {
   Typography,
   Grid,
   IconButton,
-  Chip,
   CircularProgress,
   Box,
-  Stack,
 } from '@mui/material';
 import {
   NavigateBefore,
   NavigateNext,
 } from '@mui/icons-material';
-import Header from './components/Header';
 import Authpopup from './components/Authpopup';
 import SearchBar from './components/SearchBar';
-import { useAuth } from './AuthContext';
-import { fetchUserFavorites, toggleUserFavorite } from './utils/favoritesApi';
+import PageShell from './components/layout/PageShell';
+import GenerationFilter from './components/pokeAPI/GenerationFilter';
 import PokemonCard from './components/pokeAPI/PokemonCard';
 import { enrichPokemonList } from './utils/pokemonUtils';
+import { getErrorMessage } from './utils/errorUtils';
+import { useDebouncedValue } from './hooks/useDebouncedValue';
+import { useFavorites } from './hooks/useFavorites';
 import {
   POKEMON_URL,
   PAGE_SIZE,
   SEARCH_RESULT_LIMIT,
-  ALL_GEN_OPTIONS,
   FIRST_ID_BY_GEN,
 } from './utils/constants';
-import type { EnrichedPokemon, FavoritesMap, PokemonListItem } from './types';
+import type { EnrichedPokemon, PokemonListItem } from './types';
 
 type SelectedGen = 'all' | number;
 
@@ -41,13 +40,17 @@ export default function Home() {
   const [error, setError] = useState<unknown>(null); // stores fetch errors so the UI can show an error message
   const [currentPage, setCurrentPage] = useState(1); // current pagination page number
   const [totalPages, setTotalPages] = useState(1); // total number of pages based on Pokémon count
-  const [favorites, setFavorites] = useState<FavoritesMap>({}); // favorite map, example: { pikachu: true, charizard: true }
   const [selectedGen, setSelectedGen] = useState<SelectedGen>('all'); // selected generation filter, either 'all' or 1–9
   const [searchQuery, setSearchQuery] = useState(''); // instant search input value as the user types
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(''); // delayed search value used after typing pauses
-  const [showAuthPopup, setShowAuthPopup] = useState(false); // controls whether the login/signup popup is shown
-  const { isAuthenticated } = useAuth(); // tracks login state from auth context
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 350); // delayed search value used after typing pauses
   const [enrichedSearchResults, setEnrichedSearchResults] = useState<EnrichedPokemon[]>([]); // search results with id, generation, spriteUrl, and types
+  const {
+    favorites,
+    showAuthPopup,
+    setShowAuthPopup,
+    fetchFavorites,
+    toggleFavorite,
+  } = useFavorites();
 
   // Stores already-enriched Pokémon by ( name -> obj ). caching doesnt affect UI so use useRef to prevent rerenders
   const enrichedPokemonCache = useRef<Record<string, EnrichedPokemon>>({});
@@ -94,43 +97,6 @@ export default function Home() {
       .map((pokemon) => enrichedPokemonCache.current[pokemon.name])
       .filter(Boolean);
   };
-
-  // Fetches favorites and stores them in state
-  const fetchFavorites = async () => {
-    try {
-      // Example favoriteMap:
-      // {
-      //   pikachu: true,
-      //   charizard: true
-      // }
-      const favoriteMap = await fetchUserFavorites();
-
-      // Updates the favorites state used by Pokémon cards
-      setFavorites(favoriteMap);
-    } catch (error) {
-      console.error('Failed to fetch favorites:', error);
-
-      // If fetching fails, reset favorites to an empty object
-      setFavorites({});
-    }
-  };
-
-  useEffect(() => { // Fetches user's favorite Pokémon when authentication state changes
-    fetchFavorites();
-  }, [isAuthenticated]);
-
-  // Waits until the user stops typing before running the search
-  useEffect(() => {
-    // Example:
-    // User types "char"
-    // After 350ms, debouncedSearchQuery becomes "char"
-    const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 350);
-
-    // Clears the old timer if the user types again before 350ms
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
 
   // Fetches the full Pokémon list once when the page first loads
   useEffect(() => {
@@ -398,41 +364,6 @@ export default function Home() {
     selectedGen,
   ]);
 
-  // Toggles a Pokémon as favorite when the user clicks the favorite button
-  const toggleFavorite = async (name: string) => {
-    // Check if the user is logged in
-    const token = localStorage.getItem('token');
-
-    // If there is no token, show the login/signup popup
-    if (!token) {
-      setShowAuthPopup(true);
-      return;
-    }
-
-    try {
-      // Example before:
-      // favorites = {
-      //   pikachu: true
-      // }
-      //
-      // toggleFavorite("pikachu") removes it
-      // toggleFavorite("charizard") adds it
-
-      const updatedFavorites = await toggleUserFavorite(name, favorites);
-
-      // Example after adding charizard:
-      // {
-      //   pikachu: true,
-      //   charizard: true
-      // }
-
-      // Update state so the heart icon changes in the UI
-      setFavorites(updatedFavorites);
-    } catch (error) {
-      console.error('Failed to update favorite:', error);
-    }
-  };
-
   // Handles generation filter clicks
   const handleGenClick = (gen: SelectedGen) => {
     // If searching, only filter the current search results by generation
@@ -462,36 +393,6 @@ export default function Home() {
     }
   };
 
-  // Returns chip styles based on whether the generation is selected
-  const getChipSx = (isSelected: boolean) => ({
-    px: 0.75,
-    height: 36,
-    borderRadius: '999px',
-    fontWeight: 800,
-
-    // Selected chips are red; unselected chips are white
-    border: isSelected ? '1px solid #C22E28' : '1px solid #E5E7EB',
-    bgcolor: isSelected ? '#C22E28' : '#FFFFFF',
-    color: isSelected ? '#FFFFFF' : '#374151',
-
-    // Gives selected and unselected chips different shadow strength
-    boxShadow: isSelected
-      ? '0 8px 18px rgba(194, 46, 40, 0.22)'
-      : '0 4px 12px rgba(15, 23, 42, 0.06)',
-
-    // Adds spacing inside the chip label
-    '& .MuiChip-label': {
-      px: 1.25,
-    },
-
-    // Hover color changes depending on selected state
-    '&:hover': {
-      bgcolor: isSelected ? '#B22222' : '#FFF1F2',
-      borderColor: '#C22E28',
-      color: isSelected ? '#FFFFFF' : '#C22E28',
-    },
-  });
-
   // True when the user typed something but debounce has not updated yet
   const isTypingSearch = searchQuery.trim() !== debouncedSearchQuery.trim();
 
@@ -505,26 +406,20 @@ export default function Home() {
   // Show the spinner during search, or when page data is loading and nothing is displayed yet
   const shouldShowLoading = isSearching || (isPageBusy && dataToDisplay.length === 0);
 
-  const errorMessage = isAxiosError(error)
-    ? error.message
-    : error instanceof Error
-      ? error.message
-      : 'An unexpected error occurred';
-
   if (error) {
     return (
-      <Box sx={{ p: 4, textAlign: 'center' }}>
-        <Typography variant="h6" color="error">
-          Error: {errorMessage}
-        </Typography>
-      </Box>
+      <PageShell>
+        <Box sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="h6" color="error">
+            Error: {getErrorMessage(error)}
+          </Typography>
+        </Box>
+      </PageShell>
     );
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#F6F8FC' }}>
-      {/* AppBar with title and search */}
-      <Header />
+    <PageShell>
 
       <Box
         sx={{
@@ -543,40 +438,7 @@ export default function Home() {
       </Box>
 
       {/* Generation & Filter Chips */}
-      <Box
-        sx={{
-          px: { xs: 2, md: 3 },
-          pb: 2,
-          overflowX: 'auto',
-          bgcolor: '#F6F8FC',
-        }}
-      >
-        <Stack
-          direction="row"
-          spacing={1.25}
-          sx={{
-            minWidth: 'max-content',
-            py: 0.5,
-          }}
-        >
-          <Chip
-            label="All Pokémon"
-            clickable
-            onClick={() => handleGenClick('all')}
-            sx={getChipSx(selectedGen === 'all')}
-          />
-
-          {ALL_GEN_OPTIONS.map((gen) => (
-            <Chip
-              key={gen}
-              label={`Generation ${gen}`}
-              clickable
-              onClick={() => handleGenClick(gen)}
-              sx={getChipSx(selectedGen === gen)}
-            />
-          ))}
-        </Stack>
-      </Box>
+      <GenerationFilter selectedGen={selectedGen} onGenClick={handleGenClick} />
 
       {/* Display loading, empty, or grid */}
       <Box sx={{ p: { xs: 2, md: 3 }, position: 'relative' }}>
@@ -711,6 +573,6 @@ export default function Home() {
           onSuccess={fetchFavorites}
         />
       )}
-    </Box>
+    </PageShell>
   );
 }

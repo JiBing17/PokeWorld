@@ -1,54 +1,36 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Box,
   Typography,
   Button,
   Paper,
   Stack,
-  IconButton,
-  Card,
-  CardMedia,
-  CardContent,
   Divider,
 } from '@mui/material';
-import {
-  ArrowForward,
-  ArrowBackIosNew,
-} from '@mui/icons-material';
-import Header from '../Header';
+import PageShell from '../layout/PageShell';
 import MovieCard from './MovieCard';
 import MovieHero from './MovieHero';
-import { TMDB_POSTER_BASE_URL, PLACEHOLDER } from '../../utils/constants';
+import CastCard from './CastCard';
+import HorizontalScrollRow from './HorizontalScrollRow';
 import {
   fetchPokemonMovies,
   fetchMovieCast,
 } from '../../utils/moviesAPI';
+import { useMovieNavigation } from '../../hooks/useMovieNavigation';
 import type { MovieNavigationState, TmdbCastMember, TmdbMovie } from '../../types';
 
 type ActiveTab = 'Pokémon Movies' | 'Cast';
 
 export default function MovieDetail() {
   const location = useLocation(); // Reads data passed from the Movies page through navigate state
-  const navigate = useNavigate(); // Lets this page navigate back or open another movie details page
-
-  // Movie data passed from Movies.js
-  // Example location.state:
-  // {
-  //   movie: { id: 10991, title: "Pokémon: The First Movie", ... },
-  //   genres: { 12: "Adventure", 16: "Animation" },
-  //   durations: { 10991: 96 }
-  // }
   const { movie, genres, durations } = (location.state as MovieNavigationState | null) ?? {};
+  const { goToMovie, goToMovies } = useMovieNavigation({ genres, durations });
 
   const [pokemonMovies, setPokemonMovies] = useState<TmdbMovie[]>([]); // related Pokémon movies shown in the carousel
   const [castMembers, setCastMembers] = useState<TmdbCastMember[]>([]); // cast list for the selected movie
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('Pokémon Movies'); // current tab, either "Pokémon Movies" or "Cast"
-
-  // Ref for the horizontal carousel container
-  // Used to scroll left/right with arrow buttons
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Fetches related Pokémon movies and cast for the selected movie
   useEffect(() => {
@@ -87,43 +69,15 @@ export default function MovieDetail() {
     loadMovieExtraData();
   }, [movie]);
 
-  // Resets the carousel scroll position when switching tabs
-  useEffect(() => {
-    // Example:
-    // User switches from "Pokémon Movies" to "Cast"
-    // Carousel starts back at the far left
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollLeft = 0;
-    }
-  }, [activeTab]);
-
-  // Scrolls the carousel left or right
-  const handleScroll = (amount: number) => {
-    // Example:
-    // handleScroll(-750) scrolls left
-    // handleScroll(750) scrolls right
-    scrollContainerRef.current?.scrollBy({
-      left: amount,
-      behavior: 'smooth',
-    });
-  };
-
   // Opens another movie details page and passes the same shared movie data forward
   const handleMovieClick = (selectedMovie: TmdbMovie) => {
-    navigate(`/movie/${selectedMovie.id}`, {
-      state: {
-        movie: selectedMovie,
-        genres,
-        durations,
-      },
-    });
+    goToMovie(selectedMovie);
   };
 
   // UI if no movie data is available
   if (!movie) {
     return (
-      <Box sx={{ minHeight: '100vh', bgcolor: '#F6F8FC' }}>
-        <Header />
+      <PageShell>
 
         <Box
           sx={{
@@ -155,7 +109,7 @@ export default function MovieDetail() {
 
             <Button
               variant="contained"
-              onClick={() => navigate('/movies')}
+              onClick={goToMovies}
               sx={{
                 bgcolor: '#C22E28',
                 textTransform: 'none',
@@ -169,15 +123,14 @@ export default function MovieDetail() {
             </Button>
           </Paper>
         </Box>
-      </Box>
+      </PageShell>
     );
   }
   // Get the runtime of the current movie in the case that it is available
   const runtime = durations?.[movie.id] ? `${durations[movie.id]} mins` : 'N/A';
   
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#F6F8FC' }}>
-      <Header />
+    <PageShell>
 
       {/* Backdrop + Overlay + Info */}
       <Box sx={{ pt: { xs: 10, md: 11 }, pb: 5 }}>
@@ -193,7 +146,7 @@ export default function MovieDetail() {
             genres={genres}
             runtime={runtime}
             showBackButton
-            onBack={() => navigate('/movies')}
+            onBack={goToMovies}
             primaryButtonText="View on TMDB"
             onPrimaryClick={() =>
               window.open(
@@ -304,21 +257,7 @@ export default function MovieDetail() {
             <Divider sx={{ mt: 3 }} />
 
             <Box sx={{ position: 'relative', p: { xs: 2.5, md: 4 } }}>
-              <Box
-                key={activeTab}
-                ref={scrollContainerRef}
-                sx={{
-                  display: 'flex',
-                  gap: 3,
-                  overflowX: 'auto',
-                  overflowY: 'hidden',
-                  pb: 1,
-                  scrollbarWidth: 'none',
-                  '&::-webkit-scrollbar': {
-                    display: 'none',
-                  },
-                }}
-              >
+              <HorizontalScrollRow resetKey={activeTab}>
                 {activeTab === 'Pokémon Movies'
                   ? pokemonMovies.map((pokeMovie) => (
                       <Box
@@ -338,123 +277,13 @@ export default function MovieDetail() {
                       </Box>
                     ))
                   : castMembers.map((member) => (
-                      <Card
-                        key={`cast-${member.cast_id || member.id}`}
-                        elevation={0}
-                        sx={{
-                          flex: {
-                            xs: '0 0 250px',
-                            sm: '0 0 260px',
-                            md: '0 0 270px',
-                          },
-                          height: '100%',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          borderRadius: 3,
-                          border: '1px solid #E5E7EB',
-                          overflow: 'hidden',
-                          bgcolor: 'white',
-                          boxShadow: '0 8px 24px rgba(15, 23, 42, 0.06)',
-                        }}
-                      >
-                        <CardMedia
-                          component="img"
-                          image={
-                            member.profile_path
-                              ? `${TMDB_POSTER_BASE_URL}${member.profile_path}`
-                              : PLACEHOLDER
-                          }
-                          alt={member.name}
-                          sx={{
-                            height: { xs: 250, md: 300 },
-                            objectFit: 'cover',
-                            bgcolor: '#F3F4F6',
-                          }}
-                        />
-
-                        <CardContent
-                          sx={{
-                            p: 2,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            flexGrow: 1,
-                          }}
-                        >
-                          <Typography
-                            variant="h6"
-                            sx={{
-                              fontWeight: 900,
-                              color: '#111827',
-                              lineHeight: 1.25,
-                              mb: 1.25,
-                              display: '-webkit-box',
-                              WebkitLineClamp: 1,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden',
-                            }}
-                          >
-                            {member.name}
-                          </Typography>
-
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{
-                              lineHeight: 1.6,
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden',
-                            }}
-                          >
-                            {member.character || 'Unknown role'}
-                          </Typography>
-                        </CardContent>
-                      </Card>
+                      <CastCard key={`cast-${member.cast_id || member.id}`} member={member} />
                     ))}
-              </Box>
-
-              <IconButton
-                onClick={() => handleScroll(-750)}
-                sx={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: { xs: 8, md: 18 },
-                  transform: 'translateY(-50%)',
-                  bgcolor: 'white',
-                  color: '#111827',
-                  border: '1px solid #E5E7EB',
-                  boxShadow: '0 12px 28px rgba(15,23,42,0.16)',
-                  '&:hover': {
-                    bgcolor: '#F9FAFB',
-                  },
-                }}
-              >
-                <ArrowBackIosNew fontSize="small" />
-              </IconButton>
-
-              <IconButton
-                onClick={() => handleScroll(750)}
-                sx={{
-                  position: 'absolute',
-                  top: '50%',
-                  right: { xs: 8, md: 18 },
-                  transform: 'translateY(-50%)',
-                  bgcolor: 'white',
-                  color: '#111827',
-                  border: '1px solid #E5E7EB',
-                  boxShadow: '0 12px 28px rgba(15,23,42,0.16)',
-                  '&:hover': {
-                    bgcolor: '#F9FAFB',
-                  },
-                }}
-              >
-                <ArrowForward fontSize="small" />
-              </IconButton>
+              </HorizontalScrollRow>
             </Box>
           </Paper>
         </Box>
       </Box>
-    </Box>
+    </PageShell>
   );
 }

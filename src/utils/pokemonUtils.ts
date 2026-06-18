@@ -1,6 +1,13 @@
 import axios from 'axios';
-import type { EnrichedPokemon, PokemonListItem } from '../types';
+import type { EnrichedPokemon, PokemonListItem, PokemonTypeSlot } from '../types';
 import { POKEMON_URL } from './constants';
+
+interface PokemonApiResponse {
+  name: string;
+  id: number;
+  types: PokemonTypeSlot[];
+  sprites?: EnrichedPokemon['sprites'];
+}
 
 // Gets the Pokédex ID from a Pokémon API URL
 // Example: "https://pokeapi.co/api/v2/pokemon/25/" returns "25"
@@ -116,4 +123,39 @@ export const enrichPokemonList = async (
 ): Promise<EnrichedPokemon[]> => {
   // Runs enrichPokemon on each item and waits for all results
   return Promise.all(pokemonList.map(enrichPokemon));
+};
+
+// Maps a full Pokémon API response into the enriched shape used by cards
+export const mapApiResponseToEnrichedPokemon = (
+  data: PokemonApiResponse
+): EnrichedPokemon => ({
+  name: data.name,
+  url: `${POKEMON_URL}/${data.name}`,
+  id: data.id,
+  generation: getGeneration(data.id),
+  spriteUrl: getSpriteUrl(`${POKEMON_URL}/${data.id}/`),
+  types: data.types,
+  sprites: data.sprites,
+});
+
+// Fetches enriched Pokémon details for a list of favorite names
+export const fetchEnrichedPokemonByNames = async (
+  names: string[]
+): Promise<Record<string, EnrichedPokemon>> => {
+  const details: Record<string, EnrichedPokemon> = {};
+
+  await Promise.all(
+    names.map(async (name) => {
+      try {
+        const { data } = await axios.get<PokemonApiResponse>(
+          `${POKEMON_URL}/${name}`
+        );
+        details[name] = mapApiResponseToEnrichedPokemon(data);
+      } catch (error) {
+        console.error('Failed to fetch details for:', name, error);
+      }
+    })
+  );
+
+  return details;
 };

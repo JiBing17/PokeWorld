@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -17,140 +16,45 @@ import {
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import Header from '../Header';
+import PageShell from '../layout/PageShell';
 import { useAuth } from '../../AuthContext';
 import Authpopup from '../Authpopup';
-import { fetchUserFavorites, removeUserFavorite } from '../../utils/favoritesApi';
+import { useFavorites } from '../../hooks/useFavorites';
 import PokemonCard from './PokemonCard';
 import { POKEMON_URL } from '../../utils/constants';
-import { getGeneration, getSpriteUrl } from '../../utils/pokemonUtils';
-import type { EnrichedPokemon, FavoritesMap } from '../../types';
+import { fetchEnrichedPokemonByNames } from '../../utils/pokemonUtils';
+import type { EnrichedPokemon } from '../../types';
 
 type SortOrder = 'recent' | 'asc' | 'desc';
 
-interface PokemonApiResponse {
-  name: string;
-  id: number;
-  types: EnrichedPokemon['types'];
-  sprites?: EnrichedPokemon['sprites'];
-}
-
 function Favorites() {
-
-  const [favorites, setFavorites] = useState<FavoritesMap>({});
   const [pokemonDetails, setPokemonDetails] = useState<Record<string, EnrichedPokemon>>({});
   const [sortOrder, setSortOrder] = useState<SortOrder>('recent');
-  const [showAuthPopup, setShowAuthPopup] = useState(false);
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
-
-  // Fetches favorites and stores them in state
-  const fetchFavorites = async () => {
-    try {
-      // Example favoriteMap:
-      // {
-      //   pikachu: true,
-      //   charizard: true
-      // }
-      const favoriteMap = await fetchUserFavorites();
-
-      // Updates the favorites state used by Pokémon cards
-      setFavorites(favoriteMap);
-    } catch (error) {
-      console.error('Failed to fetch favorites:', error);
-
-      // If fetching fails, reset favorites to an empty object
-      setFavorites({});
-    }
-  };
-
-  useEffect(() => { // Fetches user's favorite Pokémon when authentication state changes
-    fetchFavorites(); 
-  }, [isAuthenticated]);
+  const {
+    favorites,
+    showAuthPopup,
+    setShowAuthPopup,
+    fetchFavorites,
+    removeFavorite,
+  } = useFavorites();
 
   // Fetches full Pokémon details for each favorite whenever favorites changes
   useEffect(() => {
     const fetchDetails = async () => {
-      // Stores details by Pokémon name
-      // Example:
-      // {
-      //   pikachu: { name: "pikachu", id: 25, types: [...], sprites: {...} },
-      //   charizard: { name: "charizard", id: 6, types: [...], sprites: {...} }
-      // }
-      const details: Record<string, EnrichedPokemon> = {};
-
-      // favorites is a map like:
-      // {
-      //   pikachu: true,
-      //   charizard: true
-      // }
-      for (const name in favorites) {
-        try {
-          // Fetch full data for this favorite Pokémon
-          const { data } = await axios.get<PokemonApiResponse>(`${POKEMON_URL}/${name}`);
-
-          // Save the details using the Pokémon name as the key
-          details[name] = {
-            name: data.name,
-            url: `${POKEMON_URL}/${name}`,
-            id: data.id,
-            generation: getGeneration(data.id),
-            spriteUrl: getSpriteUrl(`${POKEMON_URL}/${data.id}/`),
-            types: data.types,
-            sprites: data.sprites,
-          };
-        } catch (error) {
-          console.error("Failed to fetch details for:", name, error);
-        }
+      const names = Object.keys(favorites);
+      if (names.length === 0) {
+        setPokemonDetails({});
+        return;
       }
 
-      // Store all fetched favorite Pokémon details in state
+      const details = await fetchEnrichedPokemonByNames(names);
       setPokemonDetails(details);
     };
 
     fetchDetails();
   }, [favorites]);
-
-  // Removes a Pokémon from the user's favorites
-  const removeFavorite = async (name: string) => {
-    // Check if the user is logged in
-    const token = localStorage.getItem('token');
-
-    // If no token exists, show the login/signup popup
-    if (!token) {
-      setShowAuthPopup(true);
-      return;
-    }
-
-    try {
-      // Remove favorite from the backend
-      await removeUserFavorite(name);
-
-      // Example before:
-      // {
-      //   pikachu: true,
-      //   charizard: true
-      // }
-      //
-      // removeFavorite("pikachu") makes:
-      // {
-      //   charizard: true
-      // }
-
-      // Update local favorites state after backend succeeds
-      setFavorites((prev) => {
-        // Copy previous favorites so state is not mutated directly
-        const updatedFavorites = { ...prev };
-
-        // Remove this Pokémon from the copied object
-        delete updatedFavorites[name];
-
-        return updatedFavorites;
-      });
-    } catch (error) {
-      console.error('Failed to remove favorite:', error);
-    }
-  };
 
   // Sorts favorite Pokémon names based on the selected sort option
   const handleSort = (a: string, b: string) => {
@@ -189,14 +93,7 @@ function Favorites() {
   });
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        bgcolor: '#F6F8FC',
-        color: '#111827',
-      }}
-    >
-      <Header />
+    <PageShell>
 
       <Box
         sx={{
@@ -205,6 +102,7 @@ function Favorites() {
           px: { xs: 2, md: 4 },
           pt: { xs: 11, md: 12 },
           pb: 6,
+          color: '#111827',
         }}
       >
         <Box
@@ -494,7 +392,7 @@ function Favorites() {
           onSuccess={fetchFavorites}
         />
       )}
-    </Box>
+    </PageShell>
   );
 }
 

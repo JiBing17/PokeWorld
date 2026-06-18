@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { isAxiosError } from 'axios';
 import {
   Typography,
   Container,
   Grid,
-  CircularProgress,
   Box,
   IconButton,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft, faArrowRight } from '@fortawesome/free-solid-svg-icons';
-import { useNavigate } from 'react-router-dom';
-import Header from '../Header';
+import PageShell from '../layout/PageShell';
+import PageLoader from '../layout/PageLoader';
 import MovieCard from './MovieCard';
 import MovieHero from './MovieHero';
 import SearchBar from '../SearchBar';
@@ -20,6 +18,8 @@ import {
   fetchPokemonMovies,
   fetchMovieDurations,
 } from '../../utils/moviesAPI';
+import { getErrorMessage } from '../../utils/errorUtils';
+import { useMovieNavigation } from '../../hooks/useMovieNavigation';
 import type { DurationMap, GenreMap, TmdbMovie } from '../../types';
 
 export default function Movies() {
@@ -31,7 +31,7 @@ export default function Movies() {
   const [searchTerm, setSearchTerm] = useState(''); // current movie search input value
   const [heroIndex, setHeroIndex] = useState(0); // index of the currently displayed featured movie
   const [durations, setDurations] = useState<DurationMap>({}); // movie runtime map, example: { 10991: 96, 11836: 74 }
-  const navigate = useNavigate(); // lets this page navigate to movie details
+  const { goToMovie } = useMovieNavigation({ genres: genreMap, durations });
 
   // Fetches TMDB movie genres once when the Movies page first loads
   useEffect(() => {
@@ -152,56 +152,29 @@ export default function Movies() {
 
   // Handles clicking on a movie to navigate to its details page
   const handleMovieClick = (movie: TmdbMovie) => {
-    navigate(`/movie/${movie.id}`, {
-      state: { // pass in additional data to the movie details page
-        movie,
-        genres: genreMap,
-        durations,
-      },
-    });
+    goToMovie(movie);
   };
-
-  const errorMessage = isAxiosError(error)
-    ? error.message
-    : error instanceof Error
-      ? error.message
-      : 'An unexpected error occurred';
 
   // Renders a loading UI on the movies page while data is being fetched
   if (loading) {
-    return (
-      <Box sx={{ minHeight: '100vh', bgcolor: '#F6F8FC' }}>
-        <Header />
-
-        <Box
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          sx={{ minHeight: '100vh' }}
-        >
-          <CircularProgress />
-        </Box>
-      </Box>
-    );
+    return <PageLoader message="Loading movies..." />;
   }
+
   // Renders an error message if there was a problem fetching movies
   if (error) {
     return (
-      <Box sx={{ minHeight: '100vh', bgcolor: '#F6F8FC' }}>
-        <Header />
-
+      <PageShell>
         <Box sx={{ pt: 12 }}>
           <Typography variant="h6" color="error" align="center">
-            {`Error: ${errorMessage}`}
+            {`Error: ${getErrorMessage(error)}`}
           </Typography>
         </Box>
-      </Box>
+      </PageShell>
     );
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#F6F8FC' }}>
-      <Header />
+    <PageShell>
 
       {/* ─── TAILWIND CAROUSEL │ HERO SECTION ───────────────────────────────── */}
       <Box sx={{ pt: { xs: 10, md: 11 } }}>
@@ -289,7 +262,6 @@ export default function Movies() {
           </Grid>
         )}    
       </Container>
-      
-    </Box>
+    </PageShell>
   );
 }

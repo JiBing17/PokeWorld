@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios, { isAxiosError } from "axios";
+import axios from "axios";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import {
   Grid,
@@ -21,9 +21,9 @@ import Header from "../Header";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Favorite, FavoriteBorder } from "@mui/icons-material";
 import Authpopup from "../Authpopup";
-import { useAuth } from "../../AuthContext";
-import { fetchUserFavorites, toggleUserFavorite } from "../../utils/favoritesApi";
 import { typeColors, POKEMON_URL, truncateDescription } from "../../utils/constants";
+import { getErrorMessage } from "../../utils/errorUtils";
+import { useFavorites } from "../../hooks/useFavorites";
 import {
   getEnglishDescription,
   getMoveDetails,
@@ -31,7 +31,6 @@ import {
 } from "../../utils/pokemonDetailsUtils";
 import type {
   EvolutionStage,
-  FavoritesMap,
   MoveDetail,
   PokemonMoveRef,
   PokemonTypeSlot,
@@ -75,35 +74,13 @@ function PokemonDetails() {
   const [moves, setMoves] = useState<MoveDetail[]>([]); // simplified move list used in the Moves section
   const [displayedMoves, setDisplayedMoves] = useState(9); // number of moves currently shown
   const [about, setAbout] = useState(""); // English Pokédex description text
-  const [favorites, setFavorites] = useState<FavoritesMap>({}); // favorite map, example: { pikachu: true, charizard: true }
-  const [showAuthPopup, setShowAuthPopup] = useState(false); // controls login/signup popup visibility
-
-  const { isAuthenticated } = useAuth(); // tracks whether the user is logged in
-
-
-  // Fetches favorites and stores them in state
-  const fetchFavorites = async () => {
-    try {
-      // Example favoriteMap:
-      // {
-      //   pikachu: true,
-      //   charizard: true
-      // }
-      const favoriteMap = await fetchUserFavorites();
-
-      // Updates the favorites state used by Pokémon cards
-      setFavorites(favoriteMap);
-    } catch (error) {
-      console.error('Failed to fetch favorites:', error);
-
-      // If fetching fails, reset favorites to an empty object
-      setFavorites({});
-    }
-  };
-
-  useEffect(() => {  // Fetches user's favorite Pokémon when authentication state changes
-    fetchFavorites();
-  }, [isAuthenticated]);
+  const {
+    favorites,
+    showAuthPopup,
+    setShowAuthPopup,
+    fetchFavorites,
+    toggleFavorite,
+  } = useFavorites();
 
   // Fetches all data needed for the Pokémon details page
   useEffect(() => {
@@ -197,22 +174,6 @@ function PokemonDetails() {
     navigate("/", { state: { page: state?.fromPage || 1 } });
   };
 
-  const toggleFavorite = async (name: string) => {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      setShowAuthPopup(true);
-      return;
-    }
-
-    try {
-      const updatedFavorites = await toggleUserFavorite(name, favorites);
-      setFavorites(updatedFavorites);
-    } catch (error) {
-      console.error("Failed to update favorite:", error);
-    }
-  };
-
   // Update state to show 9 more moves on a certain button click
   const showMoreMoves = () => {
     setDisplayedMoves((prev) => prev + 9);
@@ -225,13 +186,6 @@ function PokemonDetails() {
     if (value <= 75) return "#fbc02d";
     return "#43a047";
   };
-
-  const errorMessage = isAxiosError(error)
-    ? error.message
-    : error instanceof Error
-      ? error.message
-      : 'An unexpected error occurred';
-
 
   if (loading) {
     return (
@@ -261,7 +215,7 @@ function PokemonDetails() {
         <Header />
         <Box sx={{ pt: 12, px: 3, textAlign: "center" }}>
           <Typography variant="h6" color="error">
-            Error: {errorMessage}
+            Error: {getErrorMessage(error)}
           </Typography>
           <Button
             startIcon={<ArrowBackIcon />}
