@@ -29,6 +29,9 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import Header from './components/Header';
+import { useDebouncedValue } from './hooks/useDebouncedValue';
+import { fetchEnrichedItems, fetchItemDetail } from './utils/itemApi';
+import { isAbortError } from './utils/retryUtils';
 
 // PokeAPI constants
 const POKEAPI_BASE = 'https://pokeapi.co/api/v2';
@@ -51,14 +54,6 @@ interface EnrichedItem {
 }
 
 type ItemFavoritesMap = Record<string, boolean>;
-
-interface PokeApiItemDetail {
-  name: string;
-  id: number;
-  cost: number;
-  category: { name: string };
-  effect_entries: { language: { name: string }; short_effect: string }[];
-}
 
 // Helper to extract ID from a full URL
 const getIdFromUrl = (url: string): number =>
@@ -95,6 +90,7 @@ export default function Items() {
 
   // 6) Search query
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebouncedValue(searchQuery.trim(), 350);
 
   // 7) Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -138,53 +134,38 @@ export default function Items() {
 
   // Enrich current page’s items with details (cost, category, effect, sprite)
   useEffect(() => {
-    const enrichPage = async () => {
-      if (pageItems.length === 0) {
-        setEnrichedPageItems([]);
-        return;
-      }
-      setIsLoading(true);
-      const promises = pageItems.map(async (item): Promise<EnrichedItem> => {
-        try {
-          const res = await axios.get<PokeApiItemDetail>(item.url);
-          const data = res.data;
-          return {
-            name: data.name,
-            id: data.id,
-            cost: data.cost,
-            category: data.category.name,
-            effect: data.effect_entries.find((e) => e.language.name === 'en')
-              ?.short_effect ?? null,
-            spriteUrl: getItemSpriteUrl(data.name),
-          };
-        } catch {
-          return {
-            name: item.name,
-            id: getIdFromUrl(item.url),
-            cost: null,
-            category: 'unknown',
-            effect: '',
-            spriteUrl: PLACEHOLDER,
-          };
-        }
-      });
+    if (pageItems.length === 0) {
+      setEnrichedPageItems([]);
+      return;
+    }
 
+    const controller = new AbortController();
+
+    const enrichPage = async () => {
+      setIsLoading(true);
       try {
-        const results = await Promise.all(promises);
-        setEnrichedPageItems(results);
-      } catch {
-        setEnrichedPageItems([]);
+        const results = await fetchEnrichedItems(pageItems, controller.signal);
+        if (!controller.signal.aborted) {
+          setEnrichedPageItems(results);
+        }
+      } catch (err) {
+        if (!isAbortError(err) && !controller.signal.aborted) {
+          setEnrichedPageItems([]);
+        }
       } finally {
-        setIsLoading(false);
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
 
     enrichPage();
+    return () => controller.abort();
   }, [pageItems]);
 
   // Build enriched search results whenever searchQuery changes
   const enrichedSearchResults = useMemo((): EnrichedItem[] => {
-    const q = searchQuery.trim().toLowerCase();
+    const q = debouncedSearchQuery.toLowerCase();
     if (q === '') return [];
     const matches = allItemsList.filter((item) =>
       item.name.toLowerCase().includes(q)
@@ -200,15 +181,15 @@ export default function Items() {
         spriteUrl: getItemSpriteUrl(item.name),
       };
     });
-  }, [searchQuery, allItemsList]);
+  }, [debouncedSearchQuery, allItemsList]);
 
   // Decide what data to display: search or page
   const dataToDisplay = useMemo(() => {
-    if (searchQuery.trim() !== '') {
+    if (debouncedSearchQuery !== '') {
       return enrichedSearchResults;
     }
     return enrichedPageItems;
-  }, [searchQuery, enrichedSearchResults, enrichedPageItems]);
+  }, [debouncedSearchQuery, enrichedSearchResults, enrichedPageItems]);
 
   // Toggle favorite
   const toggleFavorite = (name: string) => {
@@ -232,17 +213,8 @@ export default function Items() {
       return;
     }
     try {
-      const res = await axios.get<PokeApiItemDetail>(`${POKEAPI_BASE}/item/${item.name}`);
-      const data = res.data;
-      setModalItem({
-        name: data.name,
-        id: data.id,
-        cost: data.cost,
-        category: data.category.name,
-        effect: data.effect_entries.find((e) => e.language.name === 'en')
-          ?.short_effect ?? null,
-        spriteUrl: getItemSpriteUrl(data.name),
-      });
+      const enriched = await fetchItemDetail(item.name);
+      setModalItem(enriched);
       setModalOpen(true);
     } catch {
       setModalItem({ ...item, effect: '', cost: null, category: null });
@@ -256,7 +228,7 @@ export default function Items() {
 
   // Handle card click: navigate if searching, otherwise open dialog
   const handleCardClick = (item: EnrichedItem) => {
-    if (searchQuery.trim() !== '') {
+    if (debouncedSearchQuery !== '') {
       navigate(`/item/${item.name}`);
     } else {
       openModal(item);

@@ -27,3 +27,4 @@ yarn-error.log*
 
 /pokemon-backend/node_modules
 /pokemon-backend/.env
+/pokemon-backend/dist

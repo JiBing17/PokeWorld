@@ -15,6 +15,7 @@ import connectToDatabase from './db'; // Connects to MongoDB
 import type { UpdateFilter, Document } from 'mongodb';
 import { OAuth2Client } from 'google-auth-library'; // Verifies Google login credentials
 import OpenAI from 'openai'; // Connects to the OpenAI API for the chatbot
+import { CACHE_TTL, getCached } from './apiCache';
 
 declare global {
   namespace Express {
@@ -184,26 +185,20 @@ app.get('/api/pokemon', async (req, res) => {
   const offset = (page - 1) * limit;
 
   try {
-    // Fetch that specific range/page of Pokémon from PokeAPI
-    // Example PokeAPI request:
-    // /pokemon?offset=48&limit=48
-    const response = await axios.get(
-      `${BASE_URL}/pokemon?offset=${offset}&limit=${limit}`
+    const cacheKey = `pokeapi:list:${offset}:${limit}`;
+    const data = await getCached(
+      cacheKey,
+      async () => {
+        const response = await axios.get(
+          `${BASE_URL}/pokemon?offset=${offset}&limit=${limit}`
+        );
+        return response.data;
+      },
+      CACHE_TTL.MEDIUM,
     );
 
-    // Example response.data used by the frontend:
-    // {
-    //   count: 1302,
-    //   results: [
-    //     { name: "venonat", url: "https://pokeapi.co/api/v2/pokemon/48/" },
-    //     { name: "venomoth", url: "https://pokeapi.co/api/v2/pokemon/49/" }
-    //   ]
-    // }
-    //
-    // Frontend uses:
-    // res.data.results -> Pokémon for the current page
-    // res.data.count -> total pages calculation
-    res.json(response.data);
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json(data);
   } catch (error) {
     // Send an error if the PokeAPI request fails
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -216,8 +211,18 @@ app.get('/api/pokemon/:name', async (req, res) => {
   const { name } = req.params; // Extract the Pokémon name from the request parameters
 
   try {
-    const response = await axios.get(`${BASE_URL}/pokemon/${name}`); // Fetch Pokémon data by name from the PokeAPI using name defined above
-    res.json(response.data); // Send the fetched data as a JSON response
+    const cacheKey = `pokeapi:pokemon:${name.toLowerCase()}`;
+    const data = await getCached(
+      cacheKey,
+      async () => {
+        const response = await axios.get(`${BASE_URL}/pokemon/${name}`);
+        return response.data;
+      },
+      CACHE_TTL.LONG,
+    );
+
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.json(data);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ error: message }); // Send an error response if the fetch fails

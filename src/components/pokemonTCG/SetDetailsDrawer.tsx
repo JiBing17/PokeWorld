@@ -22,6 +22,7 @@ import TcgPagination from './TcgPagination';
 import TcgStatusPanel from './TcgStatusPanel';
 import { fetchSetById, fetchSetCardsPage } from './tcgApi';
 import { getErrorMessage } from '../../utils/errorUtils';
+import { isAbortError } from '../../utils/retryUtils';
 import { POKE_RED, darken } from './tcgTheme';
 import { TCG_SET_DRAWER_PAGE_SIZE } from './tcgTypes';
 import type { TcgSet } from './tcgTypes';
@@ -52,48 +53,46 @@ export default function SetDetailsDrawer({ open, onClose, setId }: SetDetailsDra
 
   useEffect(() => {
     if (!open || !setId) return;
-    let cancelled = false;
+    const controller = new AbortController();
     setLoadingSet(true);
     setSetErr(null);
 
-    fetchSetById(setId)
+    fetchSetById(setId, controller.signal)
       .then((data) => {
-        if (!cancelled) setSetInfo(data);
+        if (!controller.signal.aborted) setSetInfo(data);
       })
       .catch((err) => {
-        if (!cancelled) setSetErr(isAxiosError(err) ? err : err);
+        if (isAbortError(err)) return;
+        if (!controller.signal.aborted) setSetErr(isAxiosError(err) ? err : err);
       })
       .finally(() => {
-        if (!cancelled) setLoadingSet(false);
+        if (!controller.signal.aborted) setLoadingSet(false);
       });
 
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, [open, setId]);
 
   useEffect(() => {
     if (!open || !setId) return;
-    let cancelled = false;
+    const controller = new AbortController();
     setLoadingCards(true);
     setCardsErr(null);
 
-    fetchSetCardsPage(setId, page, TCG_SET_DRAWER_PAGE_SIZE)
+    fetchSetCardsPage(setId, page, TCG_SET_DRAWER_PAGE_SIZE, controller.signal)
       .then(({ data, totalCount: count }) => {
-        if (cancelled) return;
+        if (controller.signal.aborted) return;
         setCards(data);
         setTotalCount(count ?? 0);
       })
       .catch((err) => {
-        if (!cancelled) setCardsErr(isAxiosError(err) ? err : err);
+        if (isAbortError(err)) return;
+        if (!controller.signal.aborted) setCardsErr(isAxiosError(err) ? err : err);
       })
       .finally(() => {
-        if (!cancelled) setLoadingCards(false);
+        if (!controller.signal.aborted) setLoadingCards(false);
       });
 
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, [open, setId, page]);
 
   const totalPages = Math.max(1, Math.ceil((totalCount || 0) / TCG_SET_DRAWER_PAGE_SIZE));

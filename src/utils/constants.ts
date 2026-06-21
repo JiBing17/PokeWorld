@@ -1,7 +1,7 @@
 // ========================== POKEAPI RELATED CONSTANTS ========================= // 
 
 // Base URL for the backend API server
-export const BASE_URL = 'http://localhost:5000/api';
+export const BASE_URL = process.env.REACT_APP_API_URL ?? 'http://localhost:5000/api';
 
 // Pokémon endpoint built from the base API URL
 export const POKEMON_URL = `${BASE_URL}/pokemon`;

@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { isAxiosError } from 'axios';
 import {
   buildCardQuery,
-  fetchAllMatchingCards,
   fetchCardsPage,
+  fetchTopValuedCards,
 } from '../components/pokemonTCG/tcgApi';
-import { getMarketPrice } from '../components/pokemonTCG/tcgPriceUtils';
 import { TCG_MARKET_PAGE_SIZE } from '../components/pokemonTCG/tcgTypes';
 import type { TcgCard } from '../components/pokemonTCG/tcgTypes';
+import { isAbortError } from '../utils/retryUtils';
 
 interface UseTcgMarketCardsOptions {
   debouncedQuery: string;
@@ -41,60 +41,48 @@ export function useTcgMarketCards({
   );
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
 
-    const loadCurrentPage = async () => {
+    const load = async () => {
       setIsLoading(true);
       setError(null);
 
       try {
-        const { data, totalCount } = await fetchCardsPage(
-          query,
-          currentPage,
-          TCG_MARKET_PAGE_SIZE,
-        );
-        if (cancelled) return;
+        if (showingExpensive) {
+          const sorted = await fetchTopValuedCards(query, controller.signal);
+          if (controller.signal.aborted) return;
 
-        setCards(data);
-        setTotalPages(Math.max(1, Math.ceil((totalCount ?? 0) / TCG_MARKET_PAGE_SIZE)));
+          setExpensiveCards(sorted);
+          setTotalPages(Math.max(1, Math.ceil(sorted.length / TCG_MARKET_PAGE_SIZE)));
+        } else {
+          setExpensiveCards([]);
+          const { data, totalCount } = await fetchCardsPage(
+            query,
+            currentPage,
+            TCG_MARKET_PAGE_SIZE,
+            undefined,
+            controller.signal,
+          );
+          if (controller.signal.aborted) return;
+
+          setCards(data);
+          setTotalPages(Math.max(1, Math.ceil((totalCount ?? 0) / TCG_MARKET_PAGE_SIZE)));
+        }
       } catch (err) {
-        if (!cancelled) setError(isAxiosError(err) ? err : err);
+        if (isAbortError(err)) return;
+        if (!controller.signal.aborted) {
+          setError(isAxiosError(err) ? err : err);
+        }
       } finally {
-        if (!cancelled) setIsLoading(false);
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
 
-    const loadAllAndSort = async () => {
-      setIsLoading(true);
-      setError(null);
+    load();
 
-      try {
-        const all = await fetchAllMatchingCards(query);
-        if (cancelled) return;
-
-        const sorted = all
-          .filter((card) => getMarketPrice(card) != null)
-          .sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0));
-
-        setExpensiveCards(sorted);
-        setTotalPages(Math.max(1, Math.ceil(sorted.length / TCG_MARKET_PAGE_SIZE)));
-      } catch (err) {
-        if (!cancelled) setError(isAxiosError(err) ? err : err);
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
-
-    if (showingExpensive) {
-      loadAllAndSort();
-    } else {
-      setExpensiveCards([]);
-      loadCurrentPage();
-    }
-
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, [query, currentPage, showingExpensive]);
 
   const displayedCards = useMemo(() => {

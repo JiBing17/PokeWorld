@@ -1,54 +1,39 @@
 import axios from 'axios';
+import { CACHE_TTL, getCached } from './apiCache';
+import { withRetry } from './retryUtils';
 import type { DurationMap, GenreMap, TmdbCastMember, TmdbMovie } from '../types';
 import { TMDB_API_KEY, TMDB_BASE_URL } from './constants';
 
-// Fetches TMDB genres and turns them into an id-to-name map
-export const fetchMovieGenres = async (): Promise<GenreMap> => {
-  // Example request:
-  // /genre/movie/list?api_key=...&language=en-US
-  const res = await axios.get<{ genres: { id: number; name: string }[] }>(
-    `${TMDB_BASE_URL}/genre/movie/list`,
-    {
-      params: { api_key: TMDB_API_KEY, language: 'en-US' },
-    }
+const tmdbGet = <T>(url: string, params?: Record<string, unknown>) =>
+  withRetry(() =>
+    axios.get<T>(url, {
+      params: { api_key: TMDB_API_KEY, ...params },
+    }),
   );
 
-  // Example res.data.genres:
-  // [
-  //   { id: 12, name: "Adventure" },
-  //   { id: 16, name: "Animation" },
-  //   { id: 10751, name: "Family" }
-  // ]
+export const fetchMovieGenres = async (): Promise<GenreMap> => {
+  return getCached(
+    'tmdb:genres',
+    async () => {
+      const res = await tmdbGet<{ genres: { id: number; name: string }[] }>(
+        `${TMDB_BASE_URL}/genre/movie/list`,
+        { language: 'en-US' },
+      );
 
-  const genreMap: GenreMap = {};
-
-  // Example genreMap:
-  // {
-  //   12: "Adventure",
-  //   16: "Animation",
-  //   10751: "Family"
-  // }
-  res.data.genres.forEach((genre) => {
-    genreMap[genre.id] = genre.name;
-  });
-
-  return genreMap;
+      const genreMap: GenreMap = {};
+      res.data.genres.forEach((genre) => {
+        genreMap[genre.id] = genre.name;
+      });
+      return genreMap;
+    },
+    { ttlMs: CACHE_TTL.LONG, persist: 'session' },
+  );
 };
 
-// Keeps only movies that are actually related to Pokémon
 export const filterPokemonMovies = (movies: TmdbMovie[]): TmdbMovie[] => {
-  // Example movies input:
-  // [
-  //   { title: "Pokémon: The First Movie", overview: "..." },
-  //   { title: "Some Other Movie", overview: "..." }
-  // ]
-
   return movies.filter((movie) => {
-    // Safely lowercase title/overview so search is case-insensitive
     const title = movie.title?.toLowerCase() || '';
     const overview = movie.overview?.toLowerCase() || '';
-
-    // Keep movie if either the title or overview mentions Pokémon/Pokemon
     return (
       title.includes('pokémon') ||
       title.includes('pokemon') ||
@@ -56,134 +41,82 @@ export const filterPokemonMovies = (movies: TmdbMovie[]): TmdbMovie[] => {
       overview.includes('pokemon')
     );
   });
-
-  // Example output:
-  // [
-  //   { title: "Pokémon: The First Movie", overview: "..." }
-  // ]
 };
 
-// Searches TMDB for Pokémon movies across all result pages
 export const fetchPokemonMovies = async (): Promise<TmdbMovie[]> => {
-  // Fetch page 1 first so we know how many total pages TMDB found
-  // Example request:
-  // /search/movie?query=Pokémon&page=1
-  const first = await axios.get<{ total_pages: number; results: TmdbMovie[] }>(
-    `${TMDB_BASE_URL}/search/movie`,
-    {
-      params: {
-        api_key: TMDB_API_KEY,
-        query: 'Pokémon',
-        include_adult: false,
-        page: 1,
-      },
-    }
-  );
-
-  // Example first.data:
-  // {
-  //   total_pages: 3,
-  //   results: [
-  //     { id: 10991, title: "Pokémon: The First Movie", overview: "..." }
-  //   ]
-  // }
-  const pages = first.data.total_pages;
-
-  // Start the full movie list with page 1 results
-  let allMovies = [...first.data.results];
-
-  const calls = [];
-
-  // Create requests for page 2 through the last page
-  for (let page = 2; page <= pages; page++) {
-    calls.push(
-      axios.get<{ results: TmdbMovie[] }>(`${TMDB_BASE_URL}/search/movie`, {
-        params: {
-          api_key: TMDB_API_KEY,
+  return getCached(
+    'tmdb:pokemon-movies',
+    async () => {
+      const first = await tmdbGet<{ total_pages: number; results: TmdbMovie[] }>(
+        `${TMDB_BASE_URL}/search/movie`,
+        {
           query: 'Pokémon',
           include_adult: false,
-          page,
+          page: 1,
         },
-      })
-    );
-  }
+      );
 
-  // Fetch remaining pages at the same time
-  const responses = await Promise.all(calls);
+      const pages = first.data.total_pages;
+      let allMovies = [...first.data.results];
 
-  // Add each page's results into the full movie list
-  responses.forEach((response) => {
-    allMovies.push(...response.data.results);
-  });
-
-  // Keep only movies whose title/overview actually mentions Pokémon/Pokemon
-  return filterPokemonMovies(allMovies);
-};
-
-// Fetches each movie's runtime and stores it by TMDB movie id
-export const fetchMovieDurations = async (movies: TmdbMovie[]): Promise<DurationMap> => {
-  // Example movies input:
-  // [
-  //   { id: 10991, title: "Pokémon: The First Movie" },
-  //   { id: 11836, title: "Pokémon 3: The Movie" }
-  // ]
-
-  const durations: DurationMap = {};
-
-  // Fetch runtime details for all movies at the same time
-  await Promise.all(
-    movies.map(async (movie) => {
-      try {
-        // Example request:
-        // /movie/10991?api_key=...
-        const detailRes = await axios.get<{ runtime: number }>(
-          `${TMDB_BASE_URL}/movie/${movie.id}`,
-          {
-            params: { api_key: TMDB_API_KEY },
-          }
+      if (pages > 1) {
+        const calls = Array.from({ length: pages - 1 }, (_, index) =>
+          tmdbGet<{ results: TmdbMovie[] }>(`${TMDB_BASE_URL}/search/movie`, {
+            query: 'Pokémon',
+            include_adult: false,
+            page: index + 2,
+          }),
         );
-
-        // Example detailRes.data.runtime:
-        // 96
-
-        // Example durations:
-        // {
-        //   10991: 96
-        // }
-        durations[movie.id] = detailRes.data.runtime;
-      } catch (error) {
-        // Ignore one failed runtime request so the other movies can still load
+        const responses = await Promise.all(calls);
+        responses.forEach((response) => {
+          allMovies.push(...response.data.results);
+        });
       }
-    })
-  );
 
-  // Example output:
-  // {
-  //   10991: 96,
-  //   11836: 74
-  // }
-  return durations;
+      return filterPokemonMovies(allMovies);
+    },
+    { ttlMs: CACHE_TTL.MEDIUM, persist: 'session' },
+  );
 };
 
-// Fetches cast members for one TMDB movie
-export const fetchMovieCast = async (movieId: number): Promise<TmdbCastMember[]> => {
-  // Example request:
-  // /movie/10991/credits?api_key=...&language=en-US
+export const fetchMovieDurations = async (movies: TmdbMovie[]): Promise<DurationMap> => {
+  const ids = movies.map((movie) => movie.id).sort((a, b) => a - b);
+  const cacheKey = `tmdb:durations:${ids.join(',')}`;
 
-  const res = await axios.get<{ cast: TmdbCastMember[] }>(
-    `${TMDB_BASE_URL}/movie/${movieId}/credits`,
-    {
-      params: {
-        api_key: TMDB_API_KEY,
-        language: 'en-US',
-      },
-    }
+  return getCached(
+    cacheKey,
+    async () => {
+      const durations: DurationMap = {};
+
+      await Promise.all(
+        movies.map(async (movie) => {
+          try {
+            const detailRes = await tmdbGet<{ runtime: number }>(
+              `${TMDB_BASE_URL}/movie/${movie.id}`,
+            );
+            durations[movie.id] = detailRes.data.runtime;
+          } catch {
+            // Ignore individual runtime failures.
+          }
+        }),
+      );
+
+      return durations;
+    },
+    { ttlMs: CACHE_TTL.MEDIUM, persist: 'session' },
   );
+};
 
-  // Example output:
-  // [
-  //   { name: "Ikue Otani", character: "Pikachu", profile_path: "..." }
-  // ]
-
-  return res.data.cast || [];
+export const fetchMovieCast = async (movieId: number): Promise<TmdbCastMember[]> => {
+  return getCached(
+    `tmdb:cast:${movieId}`,
+    async () => {
+      const res = await tmdbGet<{ cast: TmdbCastMember[] }>(
+        `${TMDB_BASE_URL}/movie/${movieId}/credits`,
+        { language: 'en-US' },
+      );
+      return res.data.cast || [];
+    },
+    { ttlMs: CACHE_TTL.MEDIUM },
+  );
 };

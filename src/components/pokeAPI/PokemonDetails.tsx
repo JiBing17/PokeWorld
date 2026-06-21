@@ -27,6 +27,8 @@ import { useFavorites } from "../../hooks/useFavorites";
 import {
   getEnglishDescription,
   getMoveDetails,
+  INITIAL_MOVE_BATCH,
+  MOVE_LOAD_MORE_BATCH,
   parseEvolutionChain,
 } from "../../utils/pokemonDetailsUtils";
 import type {
@@ -73,6 +75,9 @@ function PokemonDetails() {
   const [evolutionChain, setEvolutionChain] = useState<EvolutionStage[]>([]); // simplified evolution list, example: [{ name: "pichu", sprite: "..." }]
   const [moves, setMoves] = useState<MoveDetail[]>([]); // simplified move list used in the Moves section
   const [displayedMoves, setDisplayedMoves] = useState(9); // number of moves currently shown
+  const [movesLoadedCount, setMovesLoadedCount] = useState(0);
+  const [loadingMoreMoves, setLoadingMoreMoves] = useState(false);
+  const [allMoveRefs, setAllMoveRefs] = useState<PokemonMoveRef[]>([]);
   const [about, setAbout] = useState(""); // English Pokédex description text
   const {
     favorites,
@@ -111,6 +116,7 @@ function PokemonDetails() {
         //   species: { url: "https://pokeapi.co/api/v2/pokemon-species/25/" }
         // }
         setPokemonDetails(response.data);
+        setAllMoveRefs(response.data.moves);
 
         // Fetch species data using the species URL from the Pokémon response
         const speciesResponse = await axios.get<{
@@ -145,8 +151,11 @@ function PokemonDetails() {
         //   { name: "quick attack", type: "normal", power: 40, accuracy: 100, pp: 30, description: "..." },
         //   { name: "thunder shock", type: "electric", power: 40, accuracy: 100, pp: 30, description: "..." }
         // ]
-        const movesDetails = await getMoveDetails(response.data.moves);
+        const movesDetails = await getMoveDetails(response.data.moves, {
+          limit: INITIAL_MOVE_BATCH,
+        });
         setMoves(movesDetails);
+        setMovesLoadedCount(movesDetails.length);
 
         // Gets the first English Pokédex description and cleans weird line breaks
         // Example output:
@@ -175,8 +184,27 @@ function PokemonDetails() {
   };
 
   // Update state to show 9 more moves on a certain button click
-  const showMoreMoves = () => {
-    setDisplayedMoves((prev) => prev + 9);
+  const showMoreMoves = async () => {
+    const nextDisplay = displayedMoves + MOVE_LOAD_MORE_BATCH;
+    setDisplayedMoves(nextDisplay);
+
+    if (
+      allMoveRefs.length > 0 &&
+      movesLoadedCount < nextDisplay &&
+      movesLoadedCount < allMoveRefs.length
+    ) {
+      setLoadingMoreMoves(true);
+      try {
+        const more = await getMoveDetails(allMoveRefs, {
+          offset: movesLoadedCount,
+          limit: MOVE_LOAD_MORE_BATCH,
+        });
+        setMoves((prev) => [...prev, ...more]);
+        setMovesLoadedCount((prev) => prev + more.length);
+      } finally {
+        setLoadingMoreMoves(false);
+      }
+    }
   };
 
   // Determines chip color based on move power or accuracy value

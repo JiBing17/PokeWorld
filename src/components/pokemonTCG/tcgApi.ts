@@ -1,14 +1,34 @@
 import axios from 'axios';
+import { CACHE_TTL, getCached } from '../../utils/apiCache';
+import { withRetry } from '../../utils/retryUtils';
 import type {
   TcgCard,
   TcgCardQueryFilters,
   TcgCardsResponse,
   TcgSet,
 } from './tcgTypes';
+import { getMarketPrice } from './tcgPriceUtils';
 
 export const POKETCG_BASE = 'https://api.pokemontcg.io/v2';
 export const CARDS_ENDPOINT = `${POKETCG_BASE}/cards`;
 export const SETS_ENDPOINT = `${POKETCG_BASE}/sets`;
+
+const TCG_API_KEY = process.env.REACT_APP_POKEMON_TCG_API_KEY;
+
+function tcgHeaders(): Record<string, string> | undefined {
+  if (!TCG_API_KEY) return undefined;
+  return { 'X-Api-Key': TCG_API_KEY };
+}
+
+function tcgGet<T>(url: string, params?: Record<string, unknown>, signal?: AbortSignal) {
+  return withRetry(() =>
+    axios.get<T>(url, {
+      params,
+      headers: tcgHeaders(),
+      signal,
+    }),
+  );
+}
 
 export function buildCardQuery(filters: TcgCardQueryFilters): string {
   const parts: string[] = [];
@@ -29,16 +49,35 @@ export function buildCardQuery(filters: TcgCardQueryFilters): string {
   return parts.join(' ');
 }
 
-export async function fetchAllSets(): Promise<TcgSet[]> {
-  const res = await axios.get<{ data: TcgSet[] }>(SETS_ENDPOINT);
-  return res.data.data.sort((a, b) =>
-    (b.releaseDate || '').localeCompare(a.releaseDate || ''),
+export async function fetchAllSets(signal?: AbortSignal): Promise<TcgSet[]> {
+  return getCached(
+    'tcg:sets:all',
+    async () => {
+      const res = await tcgGet<{ data: TcgSet[] }>(SETS_ENDPOINT, undefined, signal);
+      return res.data.data.sort((a, b) =>
+        (b.releaseDate || '').localeCompare(a.releaseDate || ''),
+      );
+    },
+    { ttlMs: CACHE_TTL.LONG, persist: 'session' },
   );
 }
 
-export async function fetchSetById(setId: string): Promise<TcgSet | null> {
-  const res = await axios.get<{ data: TcgSet }>(`${SETS_ENDPOINT}/${setId}`);
-  return res.data?.data ?? null;
+export async function fetchSetById(
+  setId: string,
+  signal?: AbortSignal,
+): Promise<TcgSet | null> {
+  return getCached(
+    `tcg:set:${setId}`,
+    async () => {
+      const res = await tcgGet<{ data: TcgSet }>(
+        `${SETS_ENDPOINT}/${setId}`,
+        undefined,
+        signal,
+      );
+      return res.data?.data ?? null;
+    },
+    { ttlMs: CACHE_TTL.LONG },
+  );
 }
 
 export async function fetchCardsPage(
@@ -46,46 +85,89 @@ export async function fetchCardsPage(
   page: number,
   pageSize: number,
   orderBy?: string,
+  signal?: AbortSignal,
 ): Promise<TcgCardsResponse> {
-  const res = await axios.get<TcgCardsResponse>(CARDS_ENDPOINT, {
-    params: {
-      q: query,
-      page,
-      pageSize,
-      ...(orderBy ? { orderBy } : {}),
-    },
-  });
+  const cacheKey = `tcg:cards:${query}:${page}:${pageSize}:${orderBy ?? ''}`;
 
-  return {
-    data: res.data.data ?? [],
-    totalCount: res.data.totalCount ?? res.data.total ?? 0,
-  };
+  return getCached(
+    cacheKey,
+    async () => {
+      const res = await tcgGet<TcgCardsResponse>(
+        CARDS_ENDPOINT,
+        {
+          q: query,
+          page,
+          pageSize,
+          ...(orderBy ? { orderBy } : {}),
+        },
+        signal,
+      );
+
+      return {
+        data: res.data.data ?? [],
+        totalCount: res.data.totalCount ?? res.data.total ?? 0,
+      };
+    },
+    { ttlMs: CACHE_TTL.SHORT },
+  );
 }
 
 export async function fetchAllMatchingCards(
   query: string,
   pageSize = 250,
+  signal?: AbortSignal,
 ): Promise<TcgCard[]> {
-  let all: TcgCard[] = [];
-  let page = 1;
+  const cacheKey = `tcg:cards:all:${query}:${pageSize}`;
 
-  while (true) {
-    const { data, totalCount } = await fetchCardsPage(query, page, pageSize);
-    all = all.concat(data);
+  return getCached(
+    cacheKey,
+    async () => {
+      let all: TcgCard[] = [];
+      let page = 1;
 
-    const total = totalCount ?? 0;
-    if (page * pageSize >= total || data.length === 0) break;
+      while (true) {
+        const { data, totalCount } = await fetchCardsPage(
+          query,
+          page,
+          pageSize,
+          undefined,
+          signal,
+        );
+        all = all.concat(data);
 
-    page += 1;
-  }
+        const total = totalCount ?? 0;
+        if (page * pageSize >= total || data.length === 0) break;
 
-  return all;
+        page += 1;
+      }
+
+      return all;
+    },
+    { ttlMs: CACHE_TTL.SHORT },
+  );
+}
+
+export async function fetchTopValuedCards(
+  query: string,
+  signal?: AbortSignal,
+): Promise<TcgCard[]> {
+  return getCached(
+    `tcg:top-valued:${query}`,
+    async () => {
+      const all = await fetchAllMatchingCards(query, 250, signal);
+      return all
+        .filter((card) => getMarketPrice(card) != null)
+        .sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0));
+    },
+    { ttlMs: CACHE_TTL.MEDIUM },
+  );
 }
 
 export async function fetchSetCardsPage(
   setId: string,
   page: number,
   pageSize: number,
+  signal?: AbortSignal,
 ): Promise<TcgCardsResponse> {
-  return fetchCardsPage(`set.id:${setId}`, page, pageSize, 'number');
+  return fetchCardsPage(`set.id:${setId}`, page, pageSize, 'number', signal);
 }
