@@ -10,87 +10,16 @@ import {
   alpha,
 } from '@mui/material';
 import { POKE_RED, POKE_YELLOW, POKE_BLUE } from './tcgTheme';
+import { getMarketPrice } from './tcgPriceUtils';
+import type { TcgCard } from './tcgTypes';
 
-export interface TcgCardSet {
-  name: string;
-  series?: string;
-}
-
-export interface TcgCardImages {
-  small: string;
-  large: string;
-}
-
-export interface TcgPlayerPriceEntry {
-  market?: number;
-}
-
-export interface TcgCard {
-  id: string;
-  name: string;
-  images: TcgCardImages;
-  set?: TcgCardSet;
-  rarity?: string;
-  supertype?: string;
-  subtypes?: string[];
-  hp?: string;
-  types?: string[];
-  flavorText?: string;
-  attacks?: Array<{
-    name: string;
-    damage?: string;
-    text?: string;
-    cost: string[];
-  }>;
-  abilities?: Array<{
-    name: string;
-    text?: string;
-  }>;
-  weaknesses?: Array<{ type: string; value: string }>;
-  resistances?: Array<{ type: string; value: string }>;
-  retreatCost?: string[];
-  tcgplayer?: {
-    prices?: {
-      holofoil?: TcgPlayerPriceEntry;
-      normal?: TcgPlayerPriceEntry;
-      reverseHolofoil?: TcgPlayerPriceEntry;
-    };
-    url?: string;
-  };
-  cardmarket?: {
-    url?: string;
-  };
-}
+export type { TcgCard } from './tcgTypes';
+export { getMarketPrice, getPriceBreakdown } from './tcgPriceUtils';
 
 interface TcgMarketCardProps {
   card: TcgCard;
   onClick: (card: TcgCard) => void;
 }
-
-export const getMarketPrice = (card: TcgCard): number | null =>
-  card.tcgplayer?.prices?.holofoil?.market ||
-  card.tcgplayer?.prices?.normal?.market ||
-  card.tcgplayer?.prices?.reverseHolofoil?.market ||
-  null;
-
-export const getPriceBreakdown = (
-  card: TcgCard,
-): Array<{ label: string; value: number }> => {
-  const prices = card.tcgplayer?.prices;
-  if (!prices) return [];
-
-  const entries: Array<{ label: string; value: number }> = [];
-  if (prices.normal?.market != null) {
-    entries.push({ label: 'Normal', value: prices.normal.market });
-  }
-  if (prices.holofoil?.market != null) {
-    entries.push({ label: 'Holofoil', value: prices.holofoil.market });
-  }
-  if (prices.reverseHolofoil?.market != null) {
-    entries.push({ label: 'Reverse Holo', value: prices.reverseHolofoil.market });
-  }
-  return entries;
-};
 
 function TcgMarketCard({ card, onClick }: TcgMarketCardProps) {
   const price = getMarketPrice(card);
@@ -120,7 +49,6 @@ function TcgMarketCard({ card, onClick }: TcgMarketCardProps) {
         },
       }}
     >
-      {/* Accent stripe */}
       <Box
         sx={{
           height: 4,

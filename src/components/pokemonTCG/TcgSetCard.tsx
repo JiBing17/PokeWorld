@@ -13,41 +13,13 @@ import { alpha } from '@mui/material/styles';
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
 import StyleOutlinedIcon from '@mui/icons-material/StyleOutlined';
 import ConfirmationNumberOutlinedIcon from '@mui/icons-material/ConfirmationNumberOutlined';
-
-const POKE_RED = '#C22E28';
-
-interface TcgSetImages {
-  logo?: string;
-  symbol?: string;
-}
-
-export interface TcgSet {
-  id: string;
-  name: string;
-  series?: string;
-  releaseDate?: string;
-  total?: number;
-  printedTotal?: number;
-  ptcgoCode?: string;
-  images?: TcgSetImages;
-}
+import { POKE_RED, darken } from './tcgTheme';
+import type { TcgSet } from './tcgTypes';
 
 interface TcgSetCardProps {
   set: TcgSet;
   onViewDetails: () => void;
 }
-
-const darken = (hex: string, amt = 0.14): string => {
-  const clamp = (n: number) => Math.max(0, Math.min(255, Math.round(n)));
-  const [r, g, b] = hex
-    .replace('#', '')
-    .match(/.{1,2}/g)!
-    .map((x) => parseInt(x, 16));
-
-  return `rgb(${clamp(r * (1 - amt))}, ${clamp(g * (1 - amt))}, ${clamp(
-    b * (1 - amt)
-  )})`;
-};
 
 function TcgSetCard({ set, onViewDetails }: TcgSetCardProps) {
   return (
@@ -111,26 +83,13 @@ function TcgSetCard({ set, onViewDetails }: TcgSetCardProps) {
             }}
           />
         ) : (
-          <Typography
-            sx={{
-              position: 'relative',
-              fontWeight: 900,
-              color: '#9CA3AF',
-            }}
-          >
+          <Typography sx={{ position: 'relative', fontWeight: 900, color: '#9CA3AF' }}>
             No Logo
           </Typography>
         )}
       </Box>
 
-      <CardContent
-        sx={{
-          flexGrow: 1,
-          p: 2.25,
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
+      <CardContent sx={{ flexGrow: 1, p: 2.25, display: 'flex', flexDirection: 'column' }}>
         <Typography
           variant="h6"
           sx={{
@@ -149,11 +108,7 @@ function TcgSetCard({ set, onViewDetails }: TcgSetCardProps) {
           {set.name}
         </Typography>
 
-        <Stack
-          direction="row"
-          justifyContent="center"
-          sx={{ mb: 2 }}
-        >
+        <Stack direction="row" justifyContent="center" sx={{ mb: 2 }}>
           <Chip
             label={set.series || 'Unknown Series'}
             size="small"
@@ -169,9 +124,7 @@ function TcgSetCard({ set, onViewDetails }: TcgSetCardProps) {
 
         <Stack spacing={1.2} sx={{ mt: 'auto' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <CalendarMonthOutlinedIcon
-              sx={{ fontSize: 19, color: '#6B7280' }}
-            />
+            <CalendarMonthOutlinedIcon sx={{ fontSize: 19, color: '#6B7280' }} />
             <Typography variant="body2" color="text.secondary">
               Released:{' '}
               <Box component="span" sx={{ fontWeight: 800, color: '#111827' }}>
@@ -204,9 +157,7 @@ function TcgSetCard({ set, onViewDetails }: TcgSetCardProps) {
 
           {set.ptcgoCode && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <ConfirmationNumberOutlinedIcon
-                sx={{ fontSize: 19, color: '#6B7280' }}
-              />
+              <ConfirmationNumberOutlinedIcon sx={{ fontSize: 19, color: '#6B7280' }} />
               <Typography variant="body2" color="text.secondary">
                 Code:{' '}
                 <Box component="span" sx={{ fontWeight: 800, color: '#111827' }}>

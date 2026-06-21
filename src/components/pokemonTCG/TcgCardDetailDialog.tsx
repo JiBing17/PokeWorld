@@ -14,7 +14,8 @@ import {
   alpha,
 } from '@mui/material';
 import { Close, OpenInNew } from '@mui/icons-material';
-import { getMarketPrice, getPriceBreakdown, type TcgCard } from './tcgMarketCard';
+import { getMarketPrice, getPriceBreakdown } from './tcgPriceUtils';
+import type { TcgCard } from './tcgTypes';
 import { POKE_RED, POKE_YELLOW, POKE_BLUE, POKE_BG } from './tcgTheme';
 
 interface TcgCardDetailDialogProps {
