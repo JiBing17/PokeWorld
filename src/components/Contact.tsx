@@ -24,6 +24,7 @@ import BugReportOutlinedIcon from "@mui/icons-material/BugReportOutlined";
 import LightbulbOutlinedIcon from "@mui/icons-material/LightbulbOutlined";
 import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
 import { BASE_URL } from "../utils/constants";
+import { pokeTextFieldSx } from "../utils/formFieldStyles";
 
 interface ContactFormData {
   name: string;
@@ -41,15 +42,7 @@ const TOPIC_OPTIONS = [
   { label: "General question", icon: <HelpOutlineOutlinedIcon />, subject: "General question" },
 ];
 
-const textFieldSx = {
-  "& .MuiOutlinedInput-root": {
-    bgcolor: "#F8FAFC",
-    borderRadius: 3,
-    "& fieldset": { borderColor: "#E5E7EB" },
-    "&:hover fieldset": { borderColor: "#C22E28" },
-    "&.Mui-focused fieldset": { borderColor: "#C22E28" },
-  },
-};
+const textFieldSx = pokeTextFieldSx();
 
 const Contact = () => {
   const [formData, setFormData] = useState<ContactFormData>({

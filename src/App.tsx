@@ -9,6 +9,7 @@ import Movies from './components/pokemonMovies/Movies';
 import TcgMarket from './components/pokemonTCG/tcgMarket';
 import MovieDetail from './components/pokemonMovies/MovieDetail';
 import SetGallery from './components/pokemonTCG/SetGallery';
+import SiteChatbot from './components/chatbot/SiteChatbot';
 
 // Sets up the router and provides authentication context to all routes
 function App() {
@@ -29,6 +30,7 @@ function App() {
                     <Route path="/contact" element={<Contact />} />
                     {/* needs work <Route path="/items" element={<Items />} /> */} 
                 </Routes>
+                <SiteChatbot />
             </Router>
         </AuthProvider>
     );

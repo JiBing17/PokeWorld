@@ -14,8 +14,10 @@ import jwt from 'jsonwebtoken'; // Creates and verifies login tokens
 import connectToDatabase from './db'; // Connects to MongoDB
 import type { UpdateFilter, Document } from 'mongodb';
 import { OAuth2Client } from 'google-auth-library'; // Verifies Google login credentials
-import OpenAI from 'openai'; // Connects to the OpenAI API for the chatbot
 import { CACHE_TTL, getCached } from './apiCache';
+import { getQuickPromptReply } from './chatbotFallback';
+import { AGENT_NAME, SITE_ASSISTANT_PROMPT } from './chatbotPrompt';
+import { chatbotError } from './chatbotErrors';
 
 declare global {
   namespace Express {
@@ -32,13 +34,101 @@ const app = express(); // Initialize the Express application
 const PORT = process.env.PORT || 5000; // Define the port number
 const BASE_URL = 'https://pokeapi.co/api/v2'; // Base URL for the PokeAPI
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID); // Google auth client for verifying Google login
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // API key used for chatbot responses
-});
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash-lite';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
+
+function isZeroQuotaError(message?: string): boolean {
+  return typeof message === 'string' && message.includes('limit: 0');
+}
+
+function isRetryableGeminiError(status?: number, message?: string): boolean {
+  if (status === 503) return true;
+  if (status !== 429) return false;
+  return !isZeroQuotaError(message);
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function requestGeminiReply(
+  contents: Array<{ role: string; parts: Array<{ text: string }> }>,
+): Promise<string> {
+  const maxAttempts = 3;
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      const response = await axios.post<{
+        candidates?: Array<{
+          content?: { parts?: Array<{ text?: string }> };
+        }>;
+      }>(
+        `${GEMINI_API_URL}/${GEMINI_MODEL}:generateContent`,
+        {
+          systemInstruction: {
+            parts: [{ text: SITE_ASSISTANT_PROMPT }],
+          },
+          contents,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': GEMINI_API_KEY,
+          },
+        },
+      );
+
+      const reply = response.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      if (!reply) {
+        throw new Error('No response from assistant.');
+      }
+
+      return reply;
+    } catch (error) {
+      lastError = error;
+
+      if (!axios.isAxiosError(error)) {
+        throw error;
+      }
+
+      const status = error.response?.status;
+      const apiMessage = (
+        error.response?.data as { error?: { message?: string } } | undefined
+      )?.error?.message;
+
+      if (!isRetryableGeminiError(status, apiMessage) || attempt === maxAttempts - 1) {
+        throw error;
+      }
+
+      const retryAfterHeader = error.response?.headers?.['retry-after'];
+      const retryAfterMs = retryAfterHeader
+        ? Number(retryAfterHeader) * 1000
+        : 1000 * 2 ** attempt;
+      await wait(Number.isFinite(retryAfterMs) ? retryAfterMs : 1000);
+    }
+  }
+
+  throw lastError;
+}
+
+interface ChatHistoryItem {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 const chatbotLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
-  message: 'Too many chatbot requests. Please try again later.',
+  handler: (_req, res) => {
+    res.status(429).json(
+      chatbotError(
+        'AGENT_RATE_LIMITED',
+        `${AGENT_NAME} needs a short break — too many messages at once. Please wait a few minutes and try again.`,
+      ),
+    );
+  },
 });
 
 const contactLimiter = rateLimit({
@@ -460,7 +550,10 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
 });
 
 app.post('/api/chatbot', chatbotLimiter, async (req, res) => {
-  const { message } = req.body;
+  const { message, history } = req.body as {
+    message?: string;
+    history?: ChatHistoryItem[];
+  };
 
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ error: 'Message is required.' });
@@ -470,43 +563,117 @@ app.post('/api/chatbot', chatbotLimiter, async (req, res) => {
     return res.status(400).json({ error: 'Message is too long.' });
   }
 
+  const quickReply = getQuickPromptReply(message);
+  if (quickReply) {
+    return res.json({ reply: quickReply });
+  }
+
+  if (
+    !GEMINI_API_KEY ||
+    GEMINI_API_KEY === 'your_gemini_api_key_here'
+  ) {
+    return res.status(503).json(
+      chatbotError(
+        'AGENT_OFFLINE',
+        `${AGENT_NAME} isn't connected right now. You can still explore the site — or visit the Contact page if you need help.`,
+      ),
+    );
+  }
+
+  const safeHistory = Array.isArray(history)
+    ? history
+        .filter(
+          (item) =>
+            item &&
+            (item.role === 'user' || item.role === 'assistant') &&
+            typeof item.content === 'string',
+        )
+        .slice(-10)
+        .map((item) => ({
+          role: item.role,
+          content: item.content.slice(0, 500),
+        }))
+    : [];
+
+  const contents = [
+    ...safeHistory.map((item) => ({
+      role: item.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: item.content }],
+    })),
+    {
+      role: 'user',
+      parts: [{ text: message }],
+    },
+  ];
+
   try {
-    const response = await openai.responses.create({
-      model: 'gpt-4.1-mini',
-      input: [
-        {
-          role: 'system',
-          content: `
-You are the PokéWorld website assistant.
-
-Your job is to explain basic things about this website in a friendly, concise way.
-
-Website context:
-- PokéWorld is a Pokémon fan website.
-- Users can browse Pokémon, view Pokémon details, search Pokémon, and filter by generation.
-- Users can sign up, log in, or use Google login.
-- Logged-in users can save favorite Pokémon/cards to their account.
-- Favorites are stored per user in MongoDB Atlas.
-- Users can explore Pokémon movies, TCG cards, TCG sets, and items.
-- The Contact page lets users send feedback or questions.
-- If asked about something unrelated to PokéWorld, politely redirect back to website help.
-- Do not claim to perform account changes, purchases, or admin actions.
-- Keep answers under 4 sentences unless the user asks for more detail.
-          `,
-        },
-        {
-          role: 'user',
-          content: message,
-        },
-      ],
-    });
-
-    res.json({
-      reply: response.output_text,
-    });
+    const reply = await requestGeminiReply(contents);
+    res.json({ reply });
   } catch (error) {
     console.error('Chatbot error:', error);
-    res.status(500).json({ error: 'Failed to get chatbot response.' });
+
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      const apiError = error.response?.data as {
+        error?: { message?: string; status?: string };
+      };
+      const apiMessage = apiError?.error?.message;
+
+      if (status === 429) {
+        if (isZeroQuotaError(apiMessage)) {
+          return res.status(503).json(
+            chatbotError(
+              'AGENT_OFFLINE',
+              `${AGENT_NAME} can't answer custom questions right now. Try the quick prompts below, or use the Contact page — those always work!`,
+            ),
+          );
+        }
+
+        if (apiMessage?.toLowerCase().includes('high demand')) {
+          return res.status(503).json(
+            chatbotError(
+              'AGENT_BUSY',
+              `${AGENT_NAME} is a little overwhelmed — lots of trainers asking questions at once! Wait a few seconds and try again.`,
+            ),
+          );
+        }
+
+        return res.status(429).json(
+          chatbotError(
+            'AGENT_RATE_LIMITED',
+            `${AGENT_NAME} needs a breather — you've hit the message limit. Wait a minute and try again.`,
+          ),
+        );
+      }
+
+      if (status === 503 || apiMessage?.toLowerCase().includes('high demand')) {
+        return res.status(503).json(
+          chatbotError(
+            'AGENT_BUSY',
+            `${AGENT_NAME} is taking a quick rest — the servers are busy. Try again in a few seconds!`,
+          ),
+        );
+      }
+
+      if (status === 401 || status === 403) {
+        return res.status(503).json(
+          chatbotError(
+            'AGENT_OFFLINE',
+            `${AGENT_NAME} isn't available right now. Use the quick prompts below or the Contact page in the meantime.`,
+          ),
+        );
+      }
+
+      if (apiMessage) {
+        return res.status(500).json(
+          chatbotError('AGENT_ERROR', `${AGENT_NAME} ran into a hiccup. Please try again.`),
+        );
+      }
+    }
+
+    res.status(500).json(
+      chatbotError('AGENT_ERROR', `${AGENT_NAME} ran into a hiccup. Please try again.`),
+    );
   }
 });
 
