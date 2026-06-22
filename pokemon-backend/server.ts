@@ -9,7 +9,6 @@ import cors from 'cors'; // Allows frontend and backend to communicate across di
 import helmet from 'helmet';
 import bodyParser from 'body-parser'; // Parses JSON request bodies so req.body is readable
 import bcrypt from 'bcryptjs'; // Hashes and compares passwords
-import nodemailer from 'nodemailer'; // Sends emails from the contact form
 import rateLimit from 'express-rate-limit'; // Limits repeated requests to protect routes from spam
 import jwt from 'jsonwebtoken'; // Creates and verifies login tokens
 import connectToDatabase from './db'; // Connects to MongoDB
@@ -22,6 +21,7 @@ import { chatbotError } from './chatbotErrors';
 import { validateCredentials, isValidContactEmail, isValidPokemonName } from './authValidation';
 import { apiProxyLimiter, proxyTmdb, proxyTcg } from './apiProxies';
 import { requireApiToken } from './apiAuth';
+import { sendContactEmail } from './contactEmail';
 
 declare global {
   namespace Express {
@@ -35,6 +35,7 @@ declare global {
 }
 
 const app = express(); // Initialize the Express application
+app.set('trust proxy', 1); // Required on Render for rate limiting behind a reverse proxy
 const PORT = process.env.PORT || 5000; // Define the port number
 const BASE_URL = 'https://pokeapi.co/api/v2'; // Base URL for the PokeAPI
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID); // Google auth client for verifying Google login
@@ -596,27 +597,11 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
   }
 
   try {
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: process.env.CONTACT_RECEIVER_EMAIL,
-      replyTo: email,
-      subject: `PokéWorld Contact: ${subject}`,
-      text: `
-        Name: ${name}
-        Email: ${email}
-        Subject: ${subject}
-
-        Message:
-        ${message}
-      `,
+    await sendContactEmail({
+      name: String(name),
+      email: String(email),
+      subject: String(subject),
+      message: String(message),
     });
 
     res.status(200).send('Message sent successfully.');
