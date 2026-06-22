@@ -6,6 +6,7 @@ dotenv.config(); // Load environment variables from a .env file into process.env
 import express, { NextFunction, Request, Response } from 'express'; // Creates the backend server and routes
 import axios from 'axios'; // Makes HTTP requests to external APIs
 import cors from 'cors'; // Allows frontend and backend to communicate across different ports/domains
+import helmet from 'helmet';
 import bodyParser from 'body-parser'; // Parses JSON request bodies so req.body is readable
 import bcrypt from 'bcryptjs'; // Hashes and compares passwords
 import nodemailer from 'nodemailer'; // Sends emails from the contact form
@@ -18,6 +19,9 @@ import { CACHE_TTL, getCached } from './apiCache';
 import { getQuickPromptReply } from './chatbotFallback';
 import { AGENT_NAME, SITE_ASSISTANT_PROMPT } from './chatbotPrompt';
 import { chatbotError } from './chatbotErrors';
+import { validateCredentials, isValidContactEmail, isValidPokemonName } from './authValidation';
+import { apiProxyLimiter, proxyTmdb, proxyTcg } from './apiProxies';
+import { requireApiToken } from './apiAuth';
 
 declare global {
   namespace Express {
@@ -37,6 +41,19 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID); // Google a
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash-lite';
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
+const IS_PROD = process.env.NODE_ENV === 'production';
+
+const ALLOWED_ORIGINS = (process.env.FRONTEND_URL ?? 'http://localhost:3000')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+function publicApiError(fallback: string, error?: unknown): string {
+  if (!IS_PROD && error instanceof Error) {
+    return error.message;
+  }
+  return fallback;
+}
 
 function isZeroQuotaError(message?: string): boolean {
   return typeof message === 'string' && message.includes('limit: 0');
@@ -137,8 +154,38 @@ const contactLimiter = rateLimit({
   message: 'Too many messages sent. Please try again later.',
 });
 
-app.use(cors()); // Allows communication between one domain to another (front-end to back-end)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: 'Too many authentication attempts. Please try again later.',
+});
+
+const pokemonLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: 'Too many Pokémon API requests. Please try again later.',
+});
+
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  }),
+);
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error('Not allowed by CORS'));
+    },
+  }),
+);
 app.use(bodyParser.json()); // Parses JSON request bodies (req.body is readable)
+
+app.use('/api', requireApiToken);
 
 // Middleware that checks if the request has a valid login token
 function authenticateUser(req: Request, res: Response, next: NextFunction) {
@@ -183,23 +230,29 @@ function authenticateUser(req: Request, res: Response, next: NextFunction) {
 }
 
 // Route to handle POST request for new user
-app.post('/api/users/register', async (req, res) => {
-  const { username, password } = req.body; // Extract username and password from the request body
-  const hashedPassword = bcrypt.hashSync(password, 8); // Hash the password for security
+app.post('/api/users/register', authLimiter, async (req, res) => {
+  const { username, password } = req.body;
+  const validationError = validateCredentials(username, password);
+  if (validationError) {
+    return res.status(400).send(validationError);
+  }
+
+  const trimmedUsername = String(username).trim();
+  const hashedPassword = bcrypt.hashSync(String(password), 10);
 
   try {
     const db = await connectToDatabase(); // Connect to the database
     const collection = db.collection('users'); // Access the 'users' collection
     
-    const existingUser = await collection.findOne({ username }); // Check if the username already exists
+    const existingUser = await collection.findOne({ username: trimmedUsername });
     if (existingUser) {
-      return res.status(409).send('User already exists'); // If user exists, send a conflict response
+      return res.status(409).send('User already exists');
     }
 
-    await collection.insertOne({  // Insert the new user into the database
-      username,
+    await collection.insertOne({
+      username: trimmedUsername,
       password: hashedPassword,
-      favorites: []
+      favorites: [],
     });
     res.status(201).send('User created'); // Send a success response
   } catch (error) {
@@ -208,9 +261,14 @@ app.post('/api/users/register', async (req, res) => {
 });
 
 // Route for logging in returning users
-app.post('/api/users/login', async (req, res) => {
-  // Get username and password from the request body
+app.post('/api/users/login', authLimiter, async (req, res) => {
   const { username, password } = req.body;
+  const validationError = validateCredentials(username, password);
+  if (validationError) {
+    return res.status(400).send(validationError);
+  }
+
+  const trimmedUsername = String(username).trim();
 
   try {
     // Connect to the users collection
@@ -218,7 +276,7 @@ app.post('/api/users/login', async (req, res) => {
     const collection = db.collection('users');
 
     // Look for a user with this username
-    const user = await collection.findOne({ username });
+    const user = await collection.findOne({ username: trimmedUsername });
 
     // Check that the user exists and the password matches the hashed password
     if (user && bcrypt.compareSync(password, user.password)) {
@@ -254,7 +312,7 @@ app.post('/api/users/login', async (req, res) => {
 });
 
 // Route for getting one page/range of Pokémon
-app.get('/api/pokemon', async (req, res) => {
+app.get('/api/pokemon', pokemonLimiter, async (req, res) => {
   // Example frontend request:
   // /api/pokemon?page=2&limit=48
   //
@@ -280,7 +338,12 @@ app.get('/api/pokemon', async (req, res) => {
       cacheKey,
       async () => {
         const response = await axios.get(
-          `${BASE_URL}/pokemon?offset=${offset}&limit=${limit}`
+          `${BASE_URL}/pokemon?offset=${offset}&limit=${limit}`,
+          {
+            headers: {
+              'User-Agent': 'PokeWorld/1.0 (fan project; https://pokeapi.co)',
+            },
+          },
         );
         return response.data;
       },
@@ -290,22 +353,29 @@ app.get('/api/pokemon', async (req, res) => {
     res.set('Cache-Control', 'public, max-age=300');
     res.json(data);
   } catch (error) {
-    // Send an error if the PokeAPI request fails
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({ error: message });
+    console.error('PokeAPI list error:', error);
+    res.status(500).json({ error: publicApiError('Failed to fetch Pokémon data.', error) });
   }
 });
 
 // GET request handler for the /api/pokemon/:name endpoint
-app.get('/api/pokemon/:name', async (req, res) => {
-  const { name } = req.params; // Extract the Pokémon name from the request parameters
+app.get('/api/pokemon/:name', pokemonLimiter, async (req, res) => {
+  const { name } = req.params;
+
+  if (!isValidPokemonName(name)) {
+    return res.status(400).json({ error: 'Invalid Pokémon name.' });
+  }
 
   try {
     const cacheKey = `pokeapi:pokemon:${name.toLowerCase()}`;
     const data = await getCached(
       cacheKey,
       async () => {
-        const response = await axios.get(`${BASE_URL}/pokemon/${name}`);
+        const response = await axios.get(`${BASE_URL}/pokemon/${name}`, {
+          headers: {
+            'User-Agent': 'PokeWorld/1.0 (fan project; https://pokeapi.co)',
+          },
+        });
         return response.data;
       },
       CACHE_TTL.LONG,
@@ -314,8 +384,8 @@ app.get('/api/pokemon/:name', async (req, res) => {
     res.set('Cache-Control', 'public, max-age=3600');
     res.json(data);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({ error: message }); // Send an error response if the fetch fails
+    console.error('PokeAPI detail error:', error);
+    res.status(500).json({ error: publicApiError('Failed to fetch Pokémon data.', error) });
   }
 });
 
@@ -357,9 +427,8 @@ app.post('/api/users/favorites', authenticateUser, async (req, res) => {
   // { pokemonName: "pikachu" }
   const { pokemonName } = req.body;
 
-  // Make sure a Pokémon name was sent
-  if (!pokemonName) {
-    return res.status(400).send('Pokemon name is required');
+  if (!isValidPokemonName(pokemonName)) {
+    return res.status(400).send('Invalid Pokémon name.');
   }
 
   try {
@@ -383,7 +452,11 @@ app.post('/api/users/favorites', authenticateUser, async (req, res) => {
 app.delete('/api/users/favorites/:pokemonName', authenticateUser, async (req, res) => {
   // Example request:
   // DELETE /api/users/favorites/pikachu
-  const pokemonName = req.params.pokemonName as string;
+  const pokemonName = req.params.pokemonName;
+
+  if (!isValidPokemonName(pokemonName)) {
+    return res.status(400).send('Invalid Pokémon name.');
+  }
 
   try {
     // Connect to the users collection
@@ -403,7 +476,7 @@ app.delete('/api/users/favorites/:pokemonName', authenticateUser, async (req, re
 });
 
 // Route for Google login/signup
-app.post('/api/users/google', async (req, res) => {
+app.post('/api/users/google', authLimiter, async (req, res) => {
   // Google sends a credential token from the frontend
   // Example request body:
   // { credential: "googleCredentialToken..." }
@@ -502,6 +575,10 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
     return res.status(400).send('All fields are required.');
   }
 
+  if (!isValidContactEmail(String(email))) {
+    return res.status(400).send('Invalid email address.');
+  }
+
   if (name.length > 80) {
     return res.status(400).send('Name is too long.');
   }
@@ -547,6 +624,22 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
     console.error('Contact email error:', error);
     res.status(500).send('Failed to send message.');
   }
+});
+
+app.use('/api/tmdb', apiProxyLimiter, (req, res) => {
+  if (req.method !== 'GET') {
+    res.status(405).json({ error: 'Method not allowed.' });
+    return;
+  }
+  void proxyTmdb(req, res);
+});
+
+app.use('/api/tcg', apiProxyLimiter, (req, res) => {
+  if (req.method !== 'GET') {
+    res.status(405).json({ error: 'Method not allowed.' });
+    return;
+  }
+  void proxyTcg(req, res);
 });
 
 app.post('/api/chatbot', chatbotLimiter, async (req, res) => {

@@ -1,5 +1,5 @@
-import axios, { isAxiosError } from 'axios';
-import { BASE_URL } from './constants';
+import { isAxiosError } from 'axios';
+import { apiClient } from './apiClient';
 
 export const AGENT_NAME = 'Bob';
 
@@ -46,7 +46,7 @@ export async function sendChatMessage(
   history: ChatMessage[],
 ): Promise<string> {
   try {
-    const response = await axios.post<{ reply: string }>(`${BASE_URL}/chatbot`, {
+    const response = await apiClient.post<{ reply: string }>('/chatbot', {
       message,
       history,
     });

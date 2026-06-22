@@ -1,6 +1,6 @@
-import axios from 'axios';
 import { CACHE_TTL, getCached } from '../../utils/apiCache';
 import { withRetry } from '../../utils/retryUtils';
+import { apiClient } from '../../utils/apiClient';
 import type {
   TcgCard,
   TcgCardQueryFilters,
@@ -9,22 +9,13 @@ import type {
 } from './tcgTypes';
 import { getMarketPrice } from './tcgPriceUtils';
 
-export const POKETCG_BASE = 'https://api.pokemontcg.io/v2';
-export const CARDS_ENDPOINT = `${POKETCG_BASE}/cards`;
-export const SETS_ENDPOINT = `${POKETCG_BASE}/sets`;
-
-const TCG_API_KEY = process.env.REACT_APP_POKEMON_TCG_API_KEY;
-
-function tcgHeaders(): Record<string, string> | undefined {
-  if (!TCG_API_KEY) return undefined;
-  return { 'X-Api-Key': TCG_API_KEY };
-}
+const CARDS_ENDPOINT = '/tcg/cards';
+const SETS_ENDPOINT = '/tcg/sets';
 
 function tcgGet<T>(url: string, params?: Record<string, unknown>, signal?: AbortSignal) {
   return withRetry(() =>
-    axios.get<T>(url, {
+    apiClient.get<T>(url, {
       params,
-      headers: tcgHeaders(),
       signal,
     }),
   );

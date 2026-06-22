@@ -1,6 +1,6 @@
-import axios from 'axios';
 import type { EnrichedPokemon, PokemonListItem, PokemonTypeSlot } from '../types';
 import { POKEMON_URL } from './constants';
+import { apiClient } from './apiClient';
 
 interface PokemonApiResponse {
   name: string;
@@ -77,8 +77,8 @@ export const enrichPokemon = async (pokemon: PokemonListItem): Promise<EnrichedP
 
   try {
     // Fetch detailed Pokémon data from the backend API
-    const response = await axios.get<{ types: EnrichedPokemon['types'] }>(
-      `${POKEMON_URL}/${pokemon.name}`
+    const response = await apiClient.get<{ types: EnrichedPokemon['types'] }>(
+      `/pokemon/${pokemon.name}`
     );
 
     return {
@@ -147,8 +147,8 @@ export const fetchEnrichedPokemonByNames = async (
   await Promise.all(
     names.map(async (name) => {
       try {
-        const { data } = await axios.get<PokemonApiResponse>(
-          `${POKEMON_URL}/${name}`
+        const { data } = await apiClient.get<PokemonApiResponse>(
+          `/pokemon/${name}`
         );
         details[name] = mapApiResponseToEnrichedPokemon(data);
       } catch (error) {

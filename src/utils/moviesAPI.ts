@@ -1,13 +1,12 @@
-import axios from 'axios';
 import { CACHE_TTL, getCached } from './apiCache';
 import { withRetry } from './retryUtils';
 import type { DurationMap, GenreMap, TmdbCastMember, TmdbMovie } from '../types';
-import { TMDB_API_KEY, TMDB_BASE_URL } from './constants';
+import { apiClient } from './apiClient';
 
-const tmdbGet = <T>(url: string, params?: Record<string, unknown>) =>
+const tmdbGet = <T>(path: string, params?: Record<string, unknown>) =>
   withRetry(() =>
-    axios.get<T>(url, {
-      params: { api_key: TMDB_API_KEY, ...params },
+    apiClient.get<T>(`/tmdb${path}`, {
+      params,
     }),
   );
 
@@ -16,7 +15,7 @@ export const fetchMovieGenres = async (): Promise<GenreMap> => {
     'tmdb:genres',
     async () => {
       const res = await tmdbGet<{ genres: { id: number; name: string }[] }>(
-        `${TMDB_BASE_URL}/genre/movie/list`,
+        '/genre/movie/list',
         { language: 'en-US' },
       );
 
@@ -48,7 +47,7 @@ export const fetchPokemonMovies = async (): Promise<TmdbMovie[]> => {
     'tmdb:pokemon-movies',
     async () => {
       const first = await tmdbGet<{ total_pages: number; results: TmdbMovie[] }>(
-        `${TMDB_BASE_URL}/search/movie`,
+        '/search/movie',
         {
           query: 'Pokémon',
           include_adult: false,
@@ -61,7 +60,7 @@ export const fetchPokemonMovies = async (): Promise<TmdbMovie[]> => {
 
       if (pages > 1) {
         const calls = Array.from({ length: pages - 1 }, (_, index) =>
-          tmdbGet<{ results: TmdbMovie[] }>(`${TMDB_BASE_URL}/search/movie`, {
+          tmdbGet<{ results: TmdbMovie[] }>('/search/movie', {
             query: 'Pokémon',
             include_adult: false,
             page: index + 2,
@@ -91,9 +90,7 @@ export const fetchMovieDurations = async (movies: TmdbMovie[]): Promise<Duration
       await Promise.all(
         movies.map(async (movie) => {
           try {
-            const detailRes = await tmdbGet<{ runtime: number }>(
-              `${TMDB_BASE_URL}/movie/${movie.id}`,
-            );
+            const detailRes = await tmdbGet<{ runtime: number }>(`/movie/${movie.id}`);
             durations[movie.id] = detailRes.data.runtime;
           } catch {
             // Ignore individual runtime failures.
@@ -112,7 +109,7 @@ export const fetchMovieCast = async (movieId: number): Promise<TmdbCastMember[]>
     `tmdb:cast:${movieId}`,
     async () => {
       const res = await tmdbGet<{ cast: TmdbCastMember[] }>(
-        `${TMDB_BASE_URL}/movie/${movieId}/credits`,
+        `/movie/${movieId}/credits`,
         { language: 'en-US' },
       );
       return res.data.cast || [];

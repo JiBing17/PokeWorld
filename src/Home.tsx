@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import axios from 'axios';
 import {
   Typography,
   Grid,
@@ -18,10 +17,10 @@ import GenerationFilter from './components/pokeAPI/GenerationFilter';
 import PokemonCard from './components/pokeAPI/PokemonCard';
 import { enrichPokemonList } from './utils/pokemonUtils';
 import { getErrorMessage } from './utils/errorUtils';
+import { apiClient } from './utils/apiClient';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useFavorites } from './hooks/useFavorites';
 import {
-  POKEMON_URL,
   PAGE_SIZE,
   SEARCH_RESULT_LIMIT,
   FIRST_ID_BY_GEN,
@@ -109,7 +108,7 @@ export default function Home() {
         // ]
 
         // Gets up to 2000 Pokémon so search can check the full list
-        const res = await axios.get<{ results: PokemonListItem[] }>(`${POKEMON_URL}?limit=2000`);
+        const res = await apiClient.get<{ results: PokemonListItem[] }>('/pokemon?limit=2000');
 
         // Stores the list for universal search
         setAllPokemonList(res.data.results);
@@ -136,8 +135,8 @@ export default function Home() {
         // page = 2
         // limit = 48
         // offset = (page - 1) * limit = 48
-        const res = await axios.get<{ results: PokemonListItem[]; count: number }>(
-          `${POKEMON_URL}?page=${currentPage}&limit=${PAGE_SIZE}`
+        const res = await apiClient.get<{ results: PokemonListItem[]; count: number }>(
+          `/pokemon?page=${currentPage}&limit=${PAGE_SIZE}`
         );
 
         // Example res.data.results: - list of pokemons for current page

@@ -77,10 +77,7 @@ export const truncateDescription = (text: string | null | undefined): string => 
     return text;
   };
 
-// TMDB API key stored in the frontend environment variables
-export const TMDB_API_KEY = process.env.REACT_APP_TMDB_API_KEY;
-
-// Base URL for TMDB movie API requests
+// TMDB image CDN paths (public; API calls go through the backend proxy)
 export const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 
 // Base URL for TMDB poster images

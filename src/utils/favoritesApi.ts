@@ -1,22 +1,5 @@
-import axios from 'axios';
 import type { FavoritesMap } from '../types';
-import { BASE_URL } from './constants';
-
-// Gets the saved login token and formats it for protected API requests
-const getAuthHeaders = (): Record<string, string> | null => {
-  const token = localStorage.getItem('token');
-
-  // No token means the user is not logged in
-  if (!token) {
-    return null;
-  }
-
-  // Example output:
-  // { Authorization: "Bearer abc123token" }
-  return {
-    Authorization: `Bearer ${token}`,
-  };
-};
+import { apiClient, getAuthHeaders } from './apiClient';
 
 // Fetches the logged-in user's favorite Pokémon
 export const fetchUserFavorites = async (): Promise<FavoritesMap> => {
@@ -27,7 +10,7 @@ export const fetchUserFavorites = async (): Promise<FavoritesMap> => {
     return {};
   }
 
-  const response = await axios.get<string[]>(`${BASE_URL}/users/favorites`, {
+  const response = await apiClient.get<string[]>('/users/favorites', {
     headers,
   });
 
@@ -57,8 +40,8 @@ export const addUserFavorite = async (pokemonName: string): Promise<void> => {
     throw new Error('Not authenticated');
   }
 
-  await axios.post(
-    `${BASE_URL}/users/favorites`,
+  await apiClient.post(
+    '/users/favorites',
     { pokemonName },
     { headers }
   );
@@ -73,7 +56,7 @@ export const removeUserFavorite = async (pokemonName: string): Promise<void> => 
     throw new Error('Not authenticated');
   }
 
-  await axios.delete(`${BASE_URL}/users/favorites/${pokemonName}`, {
+  await apiClient.delete(`/users/favorites/${pokemonName}`, {
     headers,
   });
 };

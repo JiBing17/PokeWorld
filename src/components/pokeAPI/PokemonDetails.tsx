@@ -23,6 +23,7 @@ import { Favorite, FavoriteBorder } from "@mui/icons-material";
 import Authpopup from "../Authpopup";
 import { typeColors, POKEMON_URL, truncateDescription } from "../../utils/constants";
 import { getErrorMessage } from "../../utils/errorUtils";
+import { apiClient } from "../../utils/apiClient";
 import { useFavorites } from "../../hooks/useFavorites";
 import {
   getEnglishDescription,
@@ -103,7 +104,7 @@ function PokemonDetails() {
 
         // Example request:
         // /api/pokemon/pikachu
-        const response = await axios.get<PokemonDetailsData>(`${POKEMON_URL}/${pokemonName}`);
+        const response = await apiClient.get<PokemonDetailsData>(`/pokemon/${pokemonName}`);
 
         // Example response.data has full Pokémon data:
         // {

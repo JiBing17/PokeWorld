@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import axios, { isAxiosError } from 'axios';
+import { isAxiosError } from 'axios';
 import {
     Box,
     Button,
+    Link,
     TextField,
     Typography,
 } from '@mui/material';
 import { useAuth } from '../AuthContext';
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
-import { BASE_URL } from '../utils/constants';
+import { apiClient } from '../utils/apiClient';
 import type { AuthPopupProps } from '../types';
 
 interface AuthResponse {
@@ -42,7 +43,7 @@ function AuthPopup({ onClose, onSuccess }: AuthPopupProps) {
         // }
         //
         // Backend verifies the Google credential and returns app login data
-        const response = await axios.post<AuthResponse>(`${BASE_URL}/users/google`, {
+        const response = await apiClient.post<AuthResponse>('/users/google', {
         credential: credentialResponse.credential,
         });
 
@@ -96,14 +97,14 @@ function AuthPopup({ onClose, onSuccess }: AuthPopupProps) {
         //   username: "ash",
         //   password: "pikachu123"
         // }
-        await axios.post(`${BASE_URL}/users/register`, {
+        await apiClient.post('/users/register', {
             username: cleanedUsername,
             password,
         });
         }
 
         // After signup, or if already in login mode, log the user in
-        const response = await axios.post<AuthResponse>(`${BASE_URL}/users/login`, {
+        const response = await apiClient.post<AuthResponse>('/users/login', {
         username: cleanedUsername,
         password,
         });
@@ -254,6 +255,14 @@ function AuthPopup({ onClose, onSuccess }: AuthPopupProps) {
                         width="312"
                     />
                 </Box>
+
+                <Typography variant="caption" sx={{ display: 'block', mt: 1.5, color: 'text.secondary' }}>
+                    By signing in, you agree to our{' '}
+                    <Link href="/privacy" underline="hover">
+                        Privacy Policy
+                    </Link>
+                    .
+                </Typography>
 
                 <Button
                     fullWidth

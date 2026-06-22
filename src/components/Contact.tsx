@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios, { isAxiosError } from "axios";
+import { isAxiosError } from "axios";
 import Header from "./Header";
 import {
   TextField,
@@ -23,7 +23,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import BugReportOutlinedIcon from "@mui/icons-material/BugReportOutlined";
 import LightbulbOutlinedIcon from "@mui/icons-material/LightbulbOutlined";
 import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
-import { BASE_URL } from "../utils/constants";
+import { apiClient } from '../utils/apiClient';
 import { pokeTextFieldSx } from "../utils/formFieldStyles";
 
 interface ContactFormData {
@@ -72,7 +72,7 @@ const Contact = () => {
     setIsSending(true);
 
     try {
-      await axios.post(`${BASE_URL}/contact`, formData);
+      await apiClient.post('/contact', formData);
       setStatusType("success");
       setStatusMessage("Message sent successfully.");
       setFormData({
@@ -518,10 +518,13 @@ const Contact = () => {
               </Stack>
 
               <Typography variant="body2" sx={{ color: "text.secondary", lineHeight: 1.75 }}>
-                This product uses the TMDB API but is not endorsed or certified by TMDB.
-                PokéWorld also uses PokéAPI and the Pokémon TCG API for Pokémon and trading
-                card information. PokéWorld is an unofficial fan project and is not affiliated
-                with Nintendo, Game Freak, Creatures Inc., or The Pokémon Company.
+                This product uses TMDB and the TMDB APIs but is not endorsed, certified, or
+                otherwise approved by TMDB. PokéWorld also uses{" "}
+                <Link href="https://pokeapi.co" target="_blank" rel="noopener noreferrer">
+                  PokéAPI
+                </Link>{" "}
+                and the Pokémon TCG API. PokéWorld is an unofficial fan project and is not
+                affiliated with Nintendo, Game Freak, Creatures Inc., or The Pokémon Company.
               </Typography>
             </Box>
 
