@@ -21,7 +21,7 @@ import Header from "../Header";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Favorite, FavoriteBorder } from "@mui/icons-material";
 import Authpopup from "../Authpopup";
-import { typeColors, POKEMON_URL, truncateDescription } from "../../utils/constants";
+import { typeColors, truncateDescription } from "../../utils/constants";
 import { getErrorMessage } from "../../utils/errorUtils";
 import { apiClient } from "../../utils/apiClient";
 import { useFavorites } from "../../hooks/useFavorites";
@@ -64,6 +64,11 @@ interface HomeLocationState {
   fromPage?: number;
 }
 
+async function fetchPokemonByName(name: string): Promise<PokemonDetailsData> {
+  const response = await apiClient.get<PokemonDetailsData>(`/pokemon/${name}`);
+  return response.data;
+}
+
 function PokemonDetails() {
   const { pokemonName } = useParams<{ pokemonName: string }>(); // Gets the Pokémon name from the URL, example: /pokemon/pikachu
   const navigate = useNavigate(); // Lets this page navigate to another route
@@ -104,7 +109,7 @@ function PokemonDetails() {
 
         // Example request:
         // /api/pokemon/pikachu
-        const response = await apiClient.get<PokemonDetailsData>(`/pokemon/${pokemonName}`);
+        const response = await fetchPokemonByName(pokemonName);
 
         // Example response.data has full Pokémon data:
         // {
@@ -116,14 +121,14 @@ function PokemonDetails() {
         //   moves: [...],
         //   species: { url: "https://pokeapi.co/api/v2/pokemon-species/25/" }
         // }
-        setPokemonDetails(response.data);
-        setAllMoveRefs(response.data.moves);
+        setPokemonDetails(response);
+        setAllMoveRefs(response.moves);
 
         // Fetch species data using the species URL from the Pokémon response
         const speciesResponse = await axios.get<{
           flavor_text_entries: Parameters<typeof getEnglishDescription>[0];
           evolution_chain: { url: string };
-        }>(response.data.species.url);
+        }>(response.species.url);
 
         // Example speciesResponse.data includes:
         // {
@@ -152,7 +157,7 @@ function PokemonDetails() {
         //   { name: "quick attack", type: "normal", power: 40, accuracy: 100, pp: 30, description: "..." },
         //   { name: "thunder shock", type: "electric", power: 40, accuracy: 100, pp: 30, description: "..." }
         // ]
-        const movesDetails = await getMoveDetails(response.data.moves, {
+        const movesDetails = await getMoveDetails(response.moves, {
           limit: INITIAL_MOVE_BATCH,
         });
         setMoves(movesDetails);
@@ -693,6 +698,7 @@ function PokemonDetails() {
                   <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
                     <Button
                       onClick={showMoreMoves}
+                      disabled={loadingMoreMoves}
                       variant="contained"
                       sx={{
                         bgcolor: "#C22E28",
@@ -705,7 +711,7 @@ function PokemonDetails() {
                         "&:hover": { bgcolor: "#B22222" },
                       }}
                     >
-                      Show More Moves
+                      {loadingMoreMoves ? "Loading..." : "Show More Moves"}
                     </Button>
                   </Box>
                 </Grid>
