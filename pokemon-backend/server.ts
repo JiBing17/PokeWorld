@@ -162,7 +162,7 @@ const authLimiter = rateLimit({
 
 const pokemonLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: 1000,
   message: 'Too many Pokémon API requests. Please try again later.',
 });
 

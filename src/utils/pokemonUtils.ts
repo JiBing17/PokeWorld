@@ -1,6 +1,7 @@
 import type { EnrichedPokemon, PokemonListItem, PokemonTypeSlot } from '../types';
 import { POKEMON_URL } from './constants';
 import { apiClient } from './apiClient';
+import { withRetry } from './retryUtils';
 
 interface PokemonApiResponse {
   name: string;
@@ -58,6 +59,33 @@ export const getGeneration = (pokedexId: string | number): number => {
   return 0;
 };
 
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) {
+    return [];
+  }
+
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker(): Promise<void> {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await fn(items[currentIndex]);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
+  );
+
+  return results;
+}
+
 // Adds extra display-ready data to a Pokémon object
 // Example input:
 // { name: "pikachu", url: "https://pokeapi.co/api/v2/pokemon/25/" }
@@ -77,8 +105,8 @@ export const enrichPokemon = async (pokemon: PokemonListItem): Promise<EnrichedP
 
   try {
     // Fetch detailed Pokémon data from the backend API
-    const response = await apiClient.get<{ types: EnrichedPokemon['types'] }>(
-      `/pokemon/${pokemon.name}`
+    const response = await withRetry(() =>
+      apiClient.get<{ types: EnrichedPokemon['types'] }>(`/pokemon/${pokemon.name}`),
     );
 
     return {
@@ -121,8 +149,7 @@ export const enrichPokemon = async (pokemon: PokemonListItem): Promise<EnrichedP
 export const enrichPokemonList = async (
   pokemonList: PokemonListItem[]
 ): Promise<EnrichedPokemon[]> => {
-  // Runs enrichPokemon on each item and waits for all results
-  return Promise.all(pokemonList.map(enrichPokemon));
+  return mapWithConcurrency(pokemonList, 6, enrichPokemon);
 };
 
 // Maps a full Pokémon API response into the enriched shape used by cards
@@ -144,18 +171,16 @@ export const fetchEnrichedPokemonByNames = async (
 ): Promise<Record<string, EnrichedPokemon>> => {
   const details: Record<string, EnrichedPokemon> = {};
 
-  await Promise.all(
-    names.map(async (name) => {
-      try {
-        const { data } = await apiClient.get<PokemonApiResponse>(
-          `/pokemon/${name}`
-        );
-        details[name] = mapApiResponseToEnrichedPokemon(data);
-      } catch (error) {
-        console.error('Failed to fetch details for:', name, error);
-      }
-    })
-  );
+  await mapWithConcurrency(names, 6, async (name) => {
+    try {
+      const { data } = await withRetry(() =>
+        apiClient.get<PokemonApiResponse>(`/pokemon/${name}`),
+      );
+      details[name] = mapApiResponseToEnrichedPokemon(data);
+    } catch (error) {
+      console.error('Failed to fetch details for:', name, error);
+    }
+  });
 
   return details;
 };
