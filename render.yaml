@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: pokeworld-api
+    runtime: node
+    rootDir: pokemon-backend
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
