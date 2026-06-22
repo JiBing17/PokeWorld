@@ -3,6 +3,12 @@ import type { NextFunction, Request, Response } from 'express';
 const TOKEN_HEADER = 'x-pokeworld-token';
 
 export function requireApiToken(req: Request, res: Response, next: NextFunction): void {
+  // Browsers send OPTIONS preflight before cross-origin requests with custom headers
+  if (req.method === 'OPTIONS') {
+    next();
+    return;
+  }
+
   const expected = process.env.POKEWORLD_API_TOKEN;
 
   if (!expected) {
