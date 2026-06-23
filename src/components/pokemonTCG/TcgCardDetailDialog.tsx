@@ -12,6 +12,8 @@ import {
   Paper,
   Divider,
   alpha,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { Close, OpenInNew } from '@mui/icons-material';
 import { getMarketPrice, getPriceBreakdown } from './tcgPriceUtils';
@@ -56,6 +58,9 @@ export default function TcgCardDetailDialog({
   card,
   onClose,
 }: TcgCardDetailDialogProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   if (!card) return null;
 
   const marketPrice = getMarketPrice(card);
@@ -77,13 +82,16 @@ export default function TcgCardDetailDialog({
       onClose={onClose}
       maxWidth="md"
       fullWidth
+      fullScreen={isMobile}
       scroll="paper"
       PaperProps={{
         sx: {
-          borderRadius: 4,
+          borderRadius: isMobile ? 0 : 4,
           overflow: 'hidden',
           bgcolor: POKE_BG,
-          maxHeight: '92vh',
+          maxHeight: isMobile ? '100dvh' : '92vh',
+          display: 'flex',
+          flexDirection: 'column',
         },
       }}
     >
@@ -120,6 +128,8 @@ export default function TcgCardDetailDialog({
             color: 'white',
             textShadow: '0 2px 8px rgba(0,0,0,0.15)',
             lineHeight: 1.25,
+            fontSize: { xs: '1.15rem', sm: '1.5rem' },
+            pr: 5,
           }}
         >
           {card.name}
@@ -152,7 +162,17 @@ export default function TcgCardDetailDialog({
         </Stack>
       </Box>
 
-      <DialogContent sx={{ p: { xs: 2, md: 3 }, overflow: 'visible' }}>
+      <DialogContent
+        dividers
+        sx={{
+          p: { xs: 2, md: 3 },
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehavior: 'contain',
+        }}
+      >
         <Grid container spacing={3}>
           {/* Card art */}
           <Grid item xs={12} sm={5}>

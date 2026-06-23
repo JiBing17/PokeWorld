@@ -108,6 +108,10 @@ export default function SetDetailsDrawer({ open, onClose, setId }: SetDetailsDra
         PaperProps={{
           sx: {
             width: { xs: '100%', md: 980 },
+            maxWidth: '100vw',
+            height: '100dvh',
+            display: 'flex',
+            flexDirection: 'column',
             bgcolor: theme.palette.mode === 'dark' ? alpha('#0d0d0d', 0.95) : '#fff',
             backgroundImage: 'none',
             borderLeft: `4px solid ${POKE_RED}`,
@@ -116,9 +120,7 @@ export default function SetDetailsDrawer({ open, onClose, setId }: SetDetailsDra
       >
         <Box
           sx={{
-            position: 'sticky',
-            top: 0,
-            zIndex: 2,
+            flexShrink: 0,
             px: { xs: 2, md: 3 },
             py: 1.5,
             bgcolor: POKE_RED,
@@ -187,7 +189,18 @@ export default function SetDetailsDrawer({ open, onClose, setId }: SetDetailsDra
           </Stack>
         </Box>
 
-        <Box sx={{ px: { xs: 2, md: 3 }, py: { xs: 2, md: 3 } }}>
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehavior: 'contain',
+            px: { xs: 2, md: 3 },
+            py: { xs: 2, md: 3 },
+            pb: { xs: 4, md: 3 },
+          }}
+        >
           {setErr != null && (
             <Box sx={{ mb: 2, p: 2, borderRadius: 3, bgcolor: redSofter, border: `1px solid ${redLine}` }}>
               <Typography color="error" sx={{ mb: 1, fontWeight: 700 }}>
@@ -216,7 +229,7 @@ export default function SetDetailsDrawer({ open, onClose, setId }: SetDetailsDra
           >
             <Grid container spacing={2}>
               {cards.map((card) => (
-                <Grid item xs={6} sm={4} md={3} key={card.id}>
+                <Grid item xs={12} sm={6} md={4} lg={3} key={card.id}>
                   <TcgMarketCard
                     card={card}
                     onClick={(c) => {
