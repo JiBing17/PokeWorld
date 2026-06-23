@@ -8,7 +8,13 @@ interface PageShellProps {
 
 export default function PageShell({ children }: PageShellProps) {
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#F6F8FC' }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        bgcolor: '#F6F8FC',
+        pb: { xs: 2, md: 0 },
+      }}
+    >
       <Header />
       {children}
     </Box>

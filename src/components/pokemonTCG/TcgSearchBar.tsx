@@ -28,7 +28,7 @@ export default function TcgSearchBar({
       fullWidth={fullWidth}
       sx={{
         flexGrow: fullWidth ? undefined : 1,
-        minWidth: fullWidth ? undefined : 240,
+        minWidth: fullWidth ? undefined : { xs: 0, sm: 240 },
         ...(fullWidth && { mb: 4 }),
         '& .MuiOutlinedInput-root': {
           borderRadius: 999,

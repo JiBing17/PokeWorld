@@ -67,9 +67,11 @@ function PokemonCard({
                     }}
                     sx={{
                         position: 'absolute',
-                        top: 14,
-                        right: 14,
+                        top: 10,
+                        right: 10,
                         zIndex: 2,
+                        minWidth: 44,
+                        minHeight: 44,
                         bgcolor: 'rgba(255,255,255,0.92)',
                         color: '#6B7280',
                         border: '1px solid #E5E7EB',
@@ -80,9 +82,8 @@ function PokemonCard({
                             borderColor: '#FECACA',
                         },
                     }}
-                    size="small"
                 >
-                    <Close fontSize="small" />
+                    <Close />
                 </IconButton>
             )}
 
@@ -95,9 +96,11 @@ function PokemonCard({
                     }}
                     sx={{
                         position: 'absolute',
-                        top: 14,
-                        right: 14,
+                        top: 10,
+                        right: 10,
                         zIndex: 2,
+                        minWidth: 44,
+                        minHeight: 44,
                         bgcolor: 'rgba(255,255,255,0.92)',
                         color: isFavorite ? '#C22E28' : '#6B7280',
                         border: '1px solid #E5E7EB',
@@ -108,9 +111,8 @@ function PokemonCard({
                             borderColor: '#FECACA',
                         },
                     }}
-                    size="small"
                 >
-                    {isFavorite ? <Favorite fontSize="small" /> : <FavoriteBorder fontSize="small" />}
+                    {isFavorite ? <Favorite /> : <FavoriteBorder />}
                 </IconButton>
             )}
 

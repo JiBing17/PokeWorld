@@ -6,6 +6,8 @@ import {
     Link,
     TextField,
     Typography,
+    useMediaQuery,
+    useTheme,
 } from '@mui/material';
 import { useAuth } from '../AuthContext';
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
@@ -19,6 +21,8 @@ interface AuthResponse {
 
 function AuthPopup({ onClose, onSuccess }: AuthPopupProps) {
 
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const { setIsAuthenticated } = useAuth(); // lets this popup update the global login state
     const [isSignup, setIsSignup] = useState(false); // false = login mode, true = signup mode
     const [username, setUsername] = useState(''); // stores the username typed into the form
@@ -252,7 +256,7 @@ function AuthPopup({ onClose, onSuccess }: AuthPopupProps) {
                         shape="rectangular"
                         text={isSignup ? 'signup_with' : 'signin_with'}
                         logo_alignment="left"
-                        width="312"
+                        width={isMobile ? '260' : '312'}
                     />
                 </Box>
 

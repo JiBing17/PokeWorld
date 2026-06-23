@@ -11,7 +11,7 @@ interface GenerationFilterProps {
 
 const getChipSx = (isSelected: boolean) => ({
   px: 0.75,
-  height: 36,
+  height: { xs: 40, md: 36 },
   borderRadius: '999px',
   fontWeight: 800,
   border: isSelected ? '1px solid #C22E28' : '1px solid #E5E7EB',
@@ -40,6 +40,9 @@ export default function GenerationFilter({
         px: { xs: 2, md: 3 },
         pb: 2,
         overflowX: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'none',
+        '&::-webkit-scrollbar': { display: 'none' },
         bgcolor: '#F6F8FC',
       }}
     >

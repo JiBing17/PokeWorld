@@ -8,6 +8,7 @@ import {
   MenuItem,
   Chip,
   Container,
+  Box,
 } from '@mui/material';
 import TcgSearchBar from './TcgSearchBar';
 import TcgMarketCard, { type TcgCard } from './tcgMarketCard';
@@ -84,11 +85,12 @@ export default function TcgMarket() {
           position: 'sticky',
           top: HEADER_HEIGHT,
           zIndex: 100,
-          p: 2,
+          p: { xs: 1.5, md: 2 },
           display: 'flex',
-          gap: 2,
+          gap: { xs: 1.5, md: 2 },
+          flexDirection: { xs: 'column', md: 'row' },
           flexWrap: 'wrap',
-          alignItems: 'center',
+          alignItems: { xs: 'stretch', md: 'center' },
           bgcolor: '#FFFFFF',
           borderBottom: '1px solid #E5E7EB',
         }}
@@ -97,9 +99,20 @@ export default function TcgMarket() {
           placeholder="Search cards by name"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          fullWidth
+          sx={{ mb: 0, minWidth: 0, flexGrow: 1 }}
         />
 
-        <FormControl sx={{ minWidth: 180 }} size="small">
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: 1.5,
+            width: { xs: '100%', md: 'auto' },
+            flexWrap: 'wrap',
+          }}
+        >
+        <FormControl sx={{ minWidth: { xs: 0, sm: 180 }, flex: { xs: 1, sm: 'none' } }} size="small">
           <InputLabel>Set</InputLabel>
           <Select
             value={selectedSet}
@@ -120,7 +133,7 @@ export default function TcgMarket() {
           </Select>
         </FormControl>
 
-        <FormControl sx={{ minWidth: 180 }} size="small">
+        <FormControl sx={{ minWidth: { xs: 0, sm: 180 }, flex: { xs: 1, sm: 'none' } }} size="small">
           <InputLabel>Type</InputLabel>
           <Select
             value={selectedType}
@@ -157,6 +170,7 @@ export default function TcgMarket() {
             '&:hover': { bgcolor: showingExpensive ? '#B22222' : '#E5E7EB' },
           }}
         />
+        </Box>
       </Paper>
 
       <Container maxWidth="xl" sx={{ py: { xs: 3, md: 5 }, px: { xs: 2, md: 3 } }}>
@@ -173,7 +187,7 @@ export default function TcgMarket() {
           >
             <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
               {displayedCards.map((card) => (
-                <Grid item xs={6} sm={4} md={3} lg={2} key={card.id}>
+                <Grid item xs={12} sm={6} md={3} lg={2} key={card.id}>
                   <TcgMarketCard card={card} onClick={openModal} />
                 </Grid>
               ))}

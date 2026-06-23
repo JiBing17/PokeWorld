@@ -19,7 +19,7 @@ function App() {
     return (
         <AuthProvider> { /** Provides authentication state to the entire app **/ }
             <Router>
-                <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+                <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', overflowX: 'clip' }}>
                     <Box sx={{ flex: 1 }}>
                         <Routes>
                             {/** Home page is public and loads first **/}

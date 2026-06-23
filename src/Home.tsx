@@ -5,6 +5,8 @@ import {
   IconButton,
   CircularProgress,
   Box,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   NavigateBefore,
@@ -15,6 +17,7 @@ import SearchBar from './components/SearchBar';
 import PageShell from './components/layout/PageShell';
 import GenerationFilter from './components/pokeAPI/GenerationFilter';
 import PokemonCard from './components/pokeAPI/PokemonCard';
+import TcgPagination from './components/pokemonTCG/TcgPagination';
 import { enrichPokemonList } from './utils/pokemonUtils';
 import { getErrorMessage } from './utils/errorUtils';
 import { apiClient } from './utils/apiClient';
@@ -30,6 +33,8 @@ import type { EnrichedPokemon, PokemonListItem } from './types';
 type SelectedGen = 'all' | number;
 
 export default function Home() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [allPokemonList, setAllPokemonList] = useState<PokemonListItem[]>([]); // full Pokémon list with name + url, used for search
   const [pokemonData, setPokemonData] = useState<PokemonListItem[]>([]); // basic Pokémon list for the current page
   const [enrichedPagePokemon, setEnrichedPagePokemon] = useState<EnrichedPokemon[]>([]); // current page Pokémon with id, generation, spriteUrl, and types
@@ -423,7 +428,7 @@ export default function Home() {
       <Box
         sx={{
           px: { xs: 2, md: 3 },
-          pt: 12,
+          pt: { xs: 10, md: 12 },
           pb: 2,
           bgcolor: '#F6F8FC',
         }}
@@ -440,7 +445,7 @@ export default function Home() {
       <GenerationFilter selectedGen={selectedGen} onGenClick={handleGenClick} />
 
       {/* Display loading, empty, or grid */}
-      <Box sx={{ p: { xs: 2, md: 3 }, position: 'relative' }}>
+      <Box sx={{ p: { xs: 2, md: 3 }, pb: { xs: 3, md: 3 }, position: 'relative' }}>
         {shouldShowLoading ? (
           <Box
             sx={{
@@ -491,80 +496,87 @@ export default function Home() {
           </Grid>
         )}
 
-        {/* Floating Pagination Arrows (hidden during search) */}
-        {!searchQuery.trim() && (
-          <>
-            {/* Left Arrow */}
-            <IconButton
-              onClick={() => {
-                setCurrentPage((prev) => Math.max(prev - 1, 1));
+        {!searchQuery.trim() && totalPages > 1 && (
+          isMobile ? (
+            <TcgPagination
+              page={currentPage}
+              totalPages={totalPages}
+              onPageChange={(page) => {
+                setCurrentPage(page);
                 setSearchQuery('');
               }}
-              disabled={currentPage === 1}
-              sx={{
-                position: 'fixed',
-                top: '50%',
-                left: 8,
-                transform: 'translateY(-50%)',
-                backgroundColor: '#C22E28',
-                color: 'white',
-                '&:hover': { backgroundColor: '#B22222' },
-                '&:disabled': {
-                  backgroundColor: 'rgba(194,46,40,0.5)',
-                },
-                zIndex: 1000,
-              }}
-            >
-              <NavigateBefore />
-            </IconButton>
+              variant="inline"
+            />
+          ) : (
+            <>
+              <IconButton
+                onClick={() => {
+                  setCurrentPage((prev) => Math.max(prev - 1, 1));
+                  setSearchQuery('');
+                }}
+                disabled={currentPage === 1}
+                sx={{
+                  position: 'fixed',
+                  top: '50%',
+                  left: 8,
+                  transform: 'translateY(-50%)',
+                  backgroundColor: '#C22E28',
+                  color: 'white',
+                  '&:hover': { backgroundColor: '#B22222' },
+                  '&:disabled': {
+                    backgroundColor: 'rgba(194,46,40,0.5)',
+                  },
+                  zIndex: 1000,
+                }}
+              >
+                <NavigateBefore />
+              </IconButton>
 
-            {/* Right Arrow */}
-            <IconButton
-              onClick={() => {
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages));
-                setSearchQuery('');
-              }}
-              disabled={currentPage === totalPages}
-              sx={{
-                position: 'fixed',
-                top: '50%',
-                right: 8,
-                transform: 'translateY(-50%)',
-                backgroundColor: '#C22E28',
-                color: 'white',
-                '&:hover': { backgroundColor: '#B22222' },
-                '&:disabled': {
-                  backgroundColor: 'rgba(194,46,40,0.5)',
-                },
-                zIndex: 1000,
-              }}
-            >
-              <NavigateNext />
-            </IconButton>
-          </>
+              <IconButton
+                onClick={() => {
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+                  setSearchQuery('');
+                }}
+                disabled={currentPage === totalPages}
+                sx={{
+                  position: 'fixed',
+                  top: '50%',
+                  right: 8,
+                  transform: 'translateY(-50%)',
+                  backgroundColor: '#C22E28',
+                  color: 'white',
+                  '&:hover': { backgroundColor: '#B22222' },
+                  '&:disabled': {
+                    backgroundColor: 'rgba(194,46,40,0.5)',
+                  },
+                  zIndex: 1000,
+                }}
+              >
+                <NavigateNext />
+              </IconButton>
+
+              <Box
+                sx={{
+                  position: 'fixed',
+                  bottom: 16,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  bgcolor: 'background.paper',
+                  px: 2,
+                  py: 1,
+                  borderRadius: 2,
+                  boxShadow: 3,
+                  zIndex: 1000,
+                }}
+              >
+                <Typography variant="body2">
+                  Page {currentPage} / {totalPages}
+                </Typography>
+              </Box>
+            </>
+          )
         )}
       </Box>
-
-      {/* Page Indicator (hidden during search) */}
-      {!searchQuery.trim() && (
-        <Box
-          sx={{
-            position: 'fixed',
-            bottom: 16,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            bgcolor: 'background.paper',
-            px: 2,
-            py: 1,
-            borderRadius: 2,
-            boxShadow: 3,
-          }}
-        >
-          <Typography variant="body2">
-            Page {currentPage} / {totalPages}
-          </Typography>
-        </Box>
-      )}
 
       {showAuthPopup && (
         <Authpopup

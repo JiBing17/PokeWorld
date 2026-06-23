@@ -247,7 +247,7 @@ function PokemonDetails() {
     return (
       <Box>
         <Header />
-        <Box sx={{ pt: 12, px: 3, textAlign: "center" }}>
+        <Box sx={{ pt: { xs: 10, md: 12 }, px: 3, textAlign: "center" }}>
           <Typography variant="h6" color="error">
             Error: {getErrorMessage(error)}
           </Typography>
@@ -268,7 +268,7 @@ function PokemonDetails() {
     return (
       <Box>
         <Header />
-        <Box sx={{ pt: 12, px: 3, textAlign: "center" }}>
+        <Box sx={{ pt: { xs: 10, md: 12 }, px: 3, textAlign: "center" }}>
           <Typography variant="h6">Pokémon details not found.</Typography>
         </Box>
       </Box>
@@ -385,6 +385,7 @@ function PokemonDetails() {
                     textTransform: "capitalize",
                     fontWeight: 900,
                     mb: 1,
+                    fontSize: { xs: '1.5rem', md: '2.125rem' },
                   }}
                 >
                   {name}
