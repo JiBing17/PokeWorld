@@ -22,6 +22,7 @@ import { validateCredentials, isValidContactEmail, isValidPokemonName } from './
 import { apiProxyLimiter, proxyTmdb, proxyTcg } from './apiProxies';
 import { requireApiToken } from './apiAuth';
 import { sendContactEmail } from './contactEmail';
+import { batchFetchPokemon } from './pokemonBatch';
 
 declare global {
   namespace Express {
@@ -357,6 +358,10 @@ app.get('/api/pokemon', pokemonLimiter, async (req, res) => {
     console.error('PokeAPI list error:', error);
     res.status(500).json({ error: publicApiError('Failed to fetch Pokémon data.', error) });
   }
+});
+
+app.post('/api/pokemon/batch', pokemonLimiter, (req, res) => {
+  void batchFetchPokemon(req, res);
 });
 
 // GET request handler for the /api/pokemon/:name endpoint

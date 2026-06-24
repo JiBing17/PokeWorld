@@ -18,7 +18,7 @@ import PageShell from './components/layout/PageShell';
 import GenerationFilter from './components/pokeAPI/GenerationFilter';
 import PokemonCard from './components/pokeAPI/PokemonCard';
 import TcgPagination from './components/pokemonTCG/TcgPagination';
-import { enrichPokemonList } from './utils/pokemonUtils';
+import { enrichPokemonList, buildEnrichedPokemonFromListItem } from './utils/pokemonUtils';
 import { getErrorMessage } from './utils/errorUtils';
 import { apiClient } from './utils/apiClient';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
@@ -60,62 +60,32 @@ export default function Home() {
   const enrichedPokemonCache = useRef<Record<string, EnrichedPokemon>>({});
 
   const enrichWithCache = async (pokemonList: PokemonListItem[]): Promise<EnrichedPokemon[]> => {
-    // Example input:
-    // [
-    //   { name: 'bulbasaur', url: 'https://pokeapi.co/api/v2/pokemon/1/' },
-    //   { name: 'ivysaur', url: 'https://pokeapi.co/api/v2/pokemon/2/' }
-    // ]
-
-    // Only keep Pokémon that are not already cached
     const missingPokemon = pokemonList.filter(
-      (pokemon) => !enrichedPokemonCache.current[pokemon.name]
+      (pokemon) => !enrichedPokemonCache.current[pokemon.name],
     );
 
     if (missingPokemon.length > 0) {
-      // Enrich only the Pokémon we have not loaded before
       const enriched = await enrichPokemonList(missingPokemon);
 
-      // Example cached item:
-      // enrichedPokemonCache.current['ivysaur'] = {
-      //   name: 'ivysaur',
-      //   id: 2,
-      //   generation: 1,
-      //   spriteUrl: '...',
-      //   types: [...]
-      // }
-
-      // Save each enriched Pokémon in the cache by name
       enriched.forEach((pokemon) => {
         enrichedPokemonCache.current[pokemon.name] = pokemon;
       });
     }
 
-    // Example output:
-    // [
-    //   { name: 'bulbasaur', id: 1, generation: 1, spriteUrl: '...', types: [...] },
-    //   { name: 'ivysaur', id: 2, generation: 1, spriteUrl: '...', types: [...] }
-    // ]
-
-    // Return enriched Pokémon in the same order as the input list
     return pokemonList
       .map((pokemon) => enrichedPokemonCache.current[pokemon.name])
       .filter(Boolean);
   };
 
-  // Fetches the full Pokémon list once when the page first loads
+  // Loads the full Pokémon list only when search is used (avoids a heavy request on initial page load)
   useEffect(() => {
+    if (!debouncedSearchQuery.trim() || allPokemonList.length > 0) {
+      return;
+    }
+
     const fetchAll = async () => {
       try {
-        // Example response:
-        // [
-        //   { name: "bulbasaur", url: "https://pokeapi.co/api/v2/pokemon/1/" },
-        //   { name: "ivysaur", url: "https://pokeapi.co/api/v2/pokemon/2/" }
-        // ]
-
-        // Gets up to 2000 Pokémon so search can check the full list
         const res = await apiClient.get<{ results: PokemonListItem[] }>('/pokemon?limit=2000');
-
-        // Stores the list for universal search
         setAllPokemonList(res.data.results);
       } catch (err) {
         console.error('Error fetching full Pokémon list:', err);
@@ -123,7 +93,7 @@ export default function Home() {
     };
 
     fetchAll();
-  }, []);
+  }, [debouncedSearchQuery, allPokemonList.length]);
 
   // Fetches one page of Pokémon whenever currentPage changes
   useEffect(() => {
@@ -183,19 +153,18 @@ export default function Home() {
       // Show loading state while adding id, generation, spriteUrl, and types
       setIsPageEnriching(true);
 
+      const immediate = pokemonData.map(
+        (pokemon) =>
+          enrichedPokemonCache.current[pokemon.name] ??
+          buildEnrichedPokemonFromListItem(pokemon),
+      );
+
+      if (!isCancelled) {
+        setEnrichedPagePokemon(immediate);
+      }
+
       try {
-        // Example input:
-        // [
-        //   { name: "bulbasaur", url: "https://pokeapi.co/api/v2/pokemon/1/" }
-        // ]
         const enriched = await enrichWithCache(pokemonData);
-
-        // Example output:
-        // [
-        //   { name: "bulbasaur", id: 1, generation: 1, spriteUrl: ".../1.png", types: [...] }
-        // ]
-
-        // Only update state if this request is still the latest one
         if (!isCancelled) {
           setEnrichedPagePokemon(enriched);
         }
