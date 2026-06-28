@@ -33,6 +33,10 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Test backend
+        run: npm test
+        working-directory: pokemon-backend
+
       - name: Build frontend
         run: npm run build
         env:

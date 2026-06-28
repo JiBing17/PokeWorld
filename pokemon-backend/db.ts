@@ -4,15 +4,7 @@ import dotenv from 'dotenv';
 
 dotenv.config(); // Load environment variables from a .env file into process.env
 
-const uri = process.env.MONGODB_URI; // Retrieve the MongoDB connection URI from environment variables
-
-// Check if the MongoDB connection URI exists in the .env file
-if (!uri) {
-  throw new Error('MONGODB_URI is missing from .env');
-}
-
-// Create a new MongoClient instance with the connection URI
-const client = new MongoClient(uri);
+let client: MongoClient | null = null;
 
 let db: Db | undefined; // Initialize a variable to hold the database connection
 
@@ -20,8 +12,15 @@ let db: Db | undefined; // Initialize a variable to hold the database connection
 export default async function connectToDatabase(): Promise<Db> {
   // If the database connection is not already established, establish it
   if (!db) {
+    const uri = process.env.MONGODB_URI;
+
+    if (!uri) {
+      throw new Error('MONGODB_URI is missing from .env');
+    }
+
     try {
       // Connect to the MongoDB server and select the targeted database
+      client = new MongoClient(uri);
       await client.connect();
       db = client.db('pokeAPI');
       console.log('Connected to MongoDB Atlas');
@@ -35,4 +34,12 @@ export default async function connectToDatabase(): Promise<Db> {
 
   // Return the database connection object
   return db;
+}
+
+export async function closeDatabase(): Promise<void> {
+  if (client) {
+    await client.close();
+    client = null;
+    db = undefined;
+  }
 }
