@@ -1,6 +1,5 @@
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import type { Express } from 'express';
-import { closeDatabase } from '../db';
 
 export const TEST_API_TOKEN = 'test-api-token';
 export const TEST_JWT_SECRET = 'test-jwt-secret-min-32-characters-long';
@@ -27,6 +26,7 @@ export async function getTestApp(): Promise<Express> {
 }
 
 export async function teardownTestApp(): Promise<void> {
+  const { closeDatabase } = await import('../db');
   await closeDatabase();
   if (mongod) {
     await mongod.stop();
