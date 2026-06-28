@@ -1,0 +1,7 @@
+node_modules
+build
+coverage
+pokemon-backend/node_modules
+pokemon-backend/dist
+package-lock.json
+pokemon-backend/package-lock.json
