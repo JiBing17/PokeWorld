@@ -15,27 +15,27 @@ export default function Privacy() {
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
           <Typography variant="body1" sx={{ color: '#374151', lineHeight: 1.75 }}>
-            PokéWorld is an unofficial fan website. This policy explains what information we
-            collect and how it is used.
+            PokéWorld is an unofficial fan website. This policy explains what information we collect
+            and how it is used.
           </Typography>
 
           <Typography variant="h6" sx={{ fontWeight: 800, color: '#111827' }}>
             Information we collect
           </Typography>
           <Typography variant="body1" sx={{ color: '#374151', lineHeight: 1.75 }}>
-            If you create an account, we store your username and a hashed password, or your
-            Google account email when you sign in with Google. We also store your saved favorite
-            Pokémon. If you use the contact form, we receive the name, email, subject, and message
-            you submit.
+            If you create an account, we store your username and a hashed password, or your Google
+            account email when you sign in with Google. We also store your saved favorite Pokémon.
+            If you use the contact form, we receive the name, email, subject, and message you
+            submit.
           </Typography>
 
           <Typography variant="h6" sx={{ fontWeight: 800, color: '#111827' }}>
             How we use information
           </Typography>
           <Typography variant="body1" sx={{ color: '#374151', lineHeight: 1.75 }}>
-            Account information is used to authenticate you and persist your favorites. Contact
-            form submissions are used only to respond to your message. Chatbot conversations are
-            not stored on our servers after a request is completed.
+            Account information is used to authenticate you and persist your favorites. Contact form
+            submissions are used only to respond to your message. Chatbot conversations are not
+            stored on our servers after a request is completed.
           </Typography>
 
           <Typography variant="h6" sx={{ fontWeight: 800, color: '#111827' }}>

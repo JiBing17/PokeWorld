@@ -1,5 +1,14 @@
 import React from 'react';
-import { Box, IconButton, Typography, Chip, Stack, alpha, useMediaQuery, useTheme } from '@mui/material';
+import {
+  Box,
+  IconButton,
+  Typography,
+  Chip,
+  Stack,
+  alpha,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material';
 import { NavigateBefore, NavigateNext } from '@mui/icons-material';
 import { POKE_RED, darken } from './tcgTheme';
 
@@ -29,7 +38,13 @@ export default function TcgPagination({
 
   if (effectiveVariant === 'inline') {
     return (
-      <Stack direction="row" spacing={1.25} alignItems="center" justifyContent="center" sx={{ my: 3 }}>
+      <Stack
+        direction="row"
+        spacing={1.25}
+        alignItems="center"
+        justifyContent="center"
+        sx={{ my: 3 }}
+      >
         <IconButton
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={prevDisabled}

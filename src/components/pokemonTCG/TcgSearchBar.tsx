@@ -47,7 +47,9 @@ export default function TcgSearchBar({
       InputProps={{
         startAdornment: (
           <InputAdornment position="start">
-            <SearchIcon sx={{ color: fullWidth ? POKE_RED : '#6B7280', opacity: fullWidth ? 0.85 : 1 }} />
+            <SearchIcon
+              sx={{ color: fullWidth ? POKE_RED : '#6B7280', opacity: fullWidth ? 0.85 : 1 }}
+            />
           </InputAdornment>
         ),
       }}

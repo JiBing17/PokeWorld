@@ -131,17 +131,32 @@ export default function SetDetailsDrawer({ open, onClose, setId }: SetDetailsDra
           <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
             <Stack direction="row" spacing={2} alignItems="center" sx={{ minWidth: 0 }}>
               {loadingSet ? (
-                <Skeleton variant="rounded" width={120} height={36} sx={{ bgcolor: alpha('#fff', 0.2) }} />
+                <Skeleton
+                  variant="rounded"
+                  width={120}
+                  height={36}
+                  sx={{ bgcolor: alpha('#fff', 0.2) }}
+                />
               ) : setInfo?.images?.logo ? (
                 <CardMedia
                   component="img"
                   src={setInfo.images.logo}
                   alt={`${setInfo.name} logo`}
-                  sx={{ height: 36, width: 140, objectFit: 'contain', filter: 'drop-shadow(0 1px 0 rgba(0,0,0,.25))' }}
+                  sx={{
+                    height: 36,
+                    width: 140,
+                    objectFit: 'contain',
+                    filter: 'drop-shadow(0 1px 0 rgba(0,0,0,.25))',
+                  }}
                 />
               ) : null}
               {loadingSet ? (
-                <Skeleton variant="circular" width={26} height={26} sx={{ bgcolor: alpha('#fff', 0.2) }} />
+                <Skeleton
+                  variant="circular"
+                  width={26}
+                  height={26}
+                  sx={{ bgcolor: alpha('#fff', 0.2) }}
+                />
               ) : setInfo?.images?.symbol ? (
                 <CardMedia
                   component="img"
@@ -160,7 +175,11 @@ export default function SetDetailsDrawer({ open, onClose, setId }: SetDetailsDra
                     <Chip label={setInfo.series} size="small" sx={headerChipSx} />
                   )}
                   {setInfo?.releaseDate && (
-                    <Chip label={`Released ${setInfo.releaseDate}`} size="small" sx={headerChipSx} />
+                    <Chip
+                      label={`Released ${setInfo.releaseDate}`}
+                      size="small"
+                      sx={headerChipSx}
+                    />
                   )}
                   {setInfo?.ptcgoCode && (
                     <Chip label={`PTCGO ${setInfo.ptcgoCode}`} size="small" sx={headerChipSx} />
@@ -202,11 +221,24 @@ export default function SetDetailsDrawer({ open, onClose, setId }: SetDetailsDra
           }}
         >
           {setErr != null && (
-            <Box sx={{ mb: 2, p: 2, borderRadius: 3, bgcolor: redSofter, border: `1px solid ${redLine}` }}>
+            <Box
+              sx={{
+                mb: 2,
+                p: 2,
+                borderRadius: 3,
+                bgcolor: redSofter,
+                border: `1px solid ${redLine}`,
+              }}
+            >
               <Typography color="error" sx={{ mb: 1, fontWeight: 700 }}>
                 Couldn&apos;t load set: {getErrorMessage(setErr)}
               </Typography>
-              <Button size="small" variant="outlined" sx={retryButtonSx} onClick={() => window.location.reload()}>
+              <Button
+                size="small"
+                variant="outlined"
+                sx={retryButtonSx}
+                onClick={() => window.location.reload()}
+              >
                 Try again
               </Button>
             </Box>
@@ -214,7 +246,12 @@ export default function SetDetailsDrawer({ open, onClose, setId }: SetDetailsDra
 
           <Divider sx={{ mb: 2, borderColor: redLine }} />
 
-          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ mb: 1.5 }}
+          >
             <Typography variant="h6" sx={{ fontWeight: 900 }}>
               {`Cards${totalCount ? ` (${totalCount})` : ''}`}
             </Typography>
@@ -224,7 +261,11 @@ export default function SetDetailsDrawer({ open, onClose, setId }: SetDetailsDra
             loading={loadingCards}
             loadingMessage="Loading cards..."
             error={cardsErr ? `Couldn't load cards: ${getErrorMessage(cardsErr)}` : undefined}
-            empty={!loadingCards && !cardsErr && cards.length === 0 ? 'No cards found in this set.' : undefined}
+            empty={
+              !loadingCards && !cardsErr && cards.length === 0
+                ? 'No cards found in this set.'
+                : undefined
+            }
             minHeight={240}
           >
             <Grid container spacing={2}>

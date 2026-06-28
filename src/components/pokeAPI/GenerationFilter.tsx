@@ -30,10 +30,7 @@ const getChipSx = (isSelected: boolean) => ({
   },
 });
 
-export default function GenerationFilter({
-  selectedGen,
-  onGenClick,
-}: GenerationFilterProps) {
+export default function GenerationFilter({ selectedGen, onGenClick }: GenerationFilterProps) {
   return (
     <Box
       sx={{

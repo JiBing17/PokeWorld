@@ -9,11 +9,7 @@ export interface ChatMessage {
 }
 
 export type ChatbotErrorCode =
-  | 'AGENT_OFFLINE'
-  | 'AGENT_BUSY'
-  | 'AGENT_RATE_LIMITED'
-  | 'AGENT_UNAVAILABLE'
-  | 'AGENT_ERROR';
+  'AGENT_OFFLINE' | 'AGENT_BUSY' | 'AGENT_RATE_LIMITED' | 'AGENT_UNAVAILABLE' | 'AGENT_ERROR';
 
 export class ChatbotError extends Error {
   code: ChatbotErrorCode;
@@ -41,10 +37,7 @@ function toUserMessage(code: ChatbotErrorCode, fallback: string): string {
   }
 }
 
-export async function sendChatMessage(
-  message: string,
-  history: ChatMessage[],
-): Promise<string> {
+export async function sendChatMessage(message: string, history: ChatMessage[]): Promise<string> {
   try {
     const response = await apiClient.post<{ reply: string }>('/chatbot', {
       message,
@@ -53,9 +46,7 @@ export async function sendChatMessage(
     return response.data.reply;
   } catch (error) {
     if (isAxiosError(error)) {
-      const data = error.response?.data as
-        | { error?: string; code?: ChatbotErrorCode }
-        | undefined;
+      const data = error.response?.data as { error?: string; code?: ChatbotErrorCode } | undefined;
       const code = data?.code ?? 'AGENT_ERROR';
       const serverMessage = data?.error;
 
@@ -64,10 +55,7 @@ export async function sendChatMessage(
       }
 
       if (!error.response) {
-        throw new ChatbotError(
-          'AGENT_UNAVAILABLE',
-          toUserMessage('AGENT_UNAVAILABLE', ''),
-        );
+        throw new ChatbotError('AGENT_UNAVAILABLE', toUserMessage('AGENT_UNAVAILABLE', ''));
       }
     }
 

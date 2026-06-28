@@ -41,11 +41,7 @@ function MovieCard({ movie, onClick }: MovieCardProps) {
         <Box sx={{ overflow: 'hidden' }}>
           <CardMedia
             component="img"
-            image={
-              movie.poster_path
-                ? `${TMDB_POSTER_BASE_URL}${movie.poster_path}`
-                : PLACEHOLDER
-            }
+            image={movie.poster_path ? `${TMDB_POSTER_BASE_URL}${movie.poster_path}` : PLACEHOLDER}
             alt={movie.title}
             sx={{
               height: { xs: 250, md: 300 },
@@ -95,11 +91,7 @@ function MovieCard({ movie, onClick }: MovieCardProps) {
               size="small"
             />
 
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ ml: 0.5 }}
-            >
+            <Typography variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
               {Number(movie.vote_average || 0).toFixed(1)}
             </Typography>
           </Box>

@@ -42,11 +42,7 @@ export default function TcgStatusPanel({
   if (error) {
     return (
       <Box sx={{ textAlign: 'center', mt: 4 }}>
-        {typeof error === 'string' ? (
-          <Typography color="error">{error}</Typography>
-        ) : (
-          error
-        )}
+        {typeof error === 'string' ? <Typography color="error">{error}</Typography> : error}
       </Box>
     );
   }

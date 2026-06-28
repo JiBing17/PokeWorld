@@ -32,13 +32,8 @@ function Favorites() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('recent');
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const {
-    favorites,
-    showAuthPopup,
-    setShowAuthPopup,
-    fetchFavorites,
-    removeFavorite,
-  } = useFavorites();
+  const { favorites, showAuthPopup, setShowAuthPopup, fetchFavorites, removeFavorite } =
+    useFavorites();
 
   // Fetches full Pokémon details for each favorite whenever favorites changes
   useEffect(() => {
@@ -94,7 +89,6 @@ function Favorites() {
 
   return (
     <PageShell>
-
       <Box
         sx={{
           maxWidth: 1400,
@@ -132,8 +126,7 @@ function Favorites() {
                 position: 'relative',
                 overflow: 'hidden',
               }}
-            >
-            </Box>
+            ></Box>
 
             <CardContent sx={{ p: 3 }}>
               <Typography
@@ -154,7 +147,8 @@ function Favorites() {
                   mb: 3,
                 }}
               >
-                Your saved Pokémon collection. Open a card to view details or remove it from your list.
+                Your saved Pokémon collection. Open a card to view details or remove it from your
+                list.
               </Typography>
 
               <Stack spacing={2}>
@@ -294,13 +288,9 @@ function Favorites() {
                   position: 'relative',
                 }}
               >
-
                 <Box sx={{ position: 'relative', zIndex: 1, maxWidth: 520 }}>
-
                   <Typography variant="h4" sx={{ fontWeight: 900, mb: 1 }}>
-                    {isAuthenticated
-                      ? 'No favorites saved yet'
-                      : 'Login to view your collection'}
+                    {isAuthenticated ? 'No favorites saved yet' : 'Login to view your collection'}
                   </Typography>
 
                   <Typography
@@ -370,27 +360,24 @@ function Favorites() {
               >
                 {sortedFavorites.map((name) => {
                   const pokemon = pokemonDetails[name] || createPlaceholderPokemon(name);
-                    return (
-                      <PokemonCard
-                        key={name}
-                        pokemon={pokemon}
-                        onRemoveClick={removeFavorite}
-                        to={`/pokemon/${name}`}
-                      />
-                    )
+                  return (
+                    <PokemonCard
+                      key={name}
+                      pokemon={pokemon}
+                      onRemoveClick={removeFavorite}
+                      to={`/pokemon/${name}`}
+                    />
+                  );
                 })}
               </Box>
             )}
           </Box>
         </Box>
       </Box>
-      
-      {/** Authentication popup shown when state of boolean is true due to doing user specific action while not logged in **/} 
+
+      {/** Authentication popup shown when state of boolean is true due to doing user specific action while not logged in **/}
       {showAuthPopup && (
-        <Authpopup
-          onClose={() => setShowAuthPopup(false)}
-          onSuccess={fetchFavorites}
-        />
+        <Authpopup onClose={() => setShowAuthPopup(false)} onSuccess={fetchFavorites} />
       )}
     </PageShell>
   );

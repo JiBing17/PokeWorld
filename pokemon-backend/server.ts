@@ -113,18 +113,15 @@ async function requestGeminiReply(
       }
 
       const status = error.response?.status;
-      const apiMessage = (
-        error.response?.data as { error?: { message?: string } } | undefined
-      )?.error?.message;
+      const apiMessage = (error.response?.data as { error?: { message?: string } } | undefined)
+        ?.error?.message;
 
       if (!isRetryableGeminiError(status, apiMessage) || attempt === maxAttempts - 1) {
         throw error;
       }
 
       const retryAfterHeader = error.response?.headers?.['retry-after'];
-      const retryAfterMs = retryAfterHeader
-        ? Number(retryAfterHeader) * 1000
-        : 1000 * 2 ** attempt;
+      const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : 1000 * 2 ** attempt;
       await wait(Number.isFinite(retryAfterMs) ? retryAfterMs : 1000);
     }
   }
@@ -141,12 +138,14 @@ const chatbotLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   handler: (_req, res) => {
-    res.status(429).json(
-      chatbotError(
-        'AGENT_RATE_LIMITED',
-        `${AGENT_NAME} needs a short break — too many messages at once. Please wait a few minutes and try again.`,
-      ),
-    );
+    res
+      .status(429)
+      .json(
+        chatbotError(
+          'AGENT_RATE_LIMITED',
+          `${AGENT_NAME} needs a short break — too many messages at once. Please wait a few minutes and try again.`,
+        ),
+      );
   },
 });
 
@@ -245,7 +244,7 @@ app.post('/api/users/register', authLimiter, async (req, res) => {
   try {
     const db = await connectToDatabase(); // Connect to the database
     const collection = db.collection('users'); // Access the 'users' collection
-    
+
     const existingUser = await collection.findOne({ username: trimmedUsername });
     if (existingUser) {
       return res.status(409).send('User already exists');
@@ -284,11 +283,9 @@ app.post('/api/users/login', authLimiter, async (req, res) => {
     if (user && bcrypt.compareSync(password, user.password)) {
       // Create a JWT token that proves the user is logged in
       // expiresIn: '1d' means the token expires after 1 day
-      const token = jwt.sign(
-        { username: user.username },
-        process.env.JWT_SECRET as string,
-        { expiresIn: '1d' }
-      );
+      const token = jwt.sign({ username: user.username }, process.env.JWT_SECRET as string, {
+        expiresIn: '1d',
+      });
 
       // Example response:
       // {
@@ -301,7 +298,7 @@ app.post('/api/users/login', authLimiter, async (req, res) => {
       res.json({
         message: 'User logged in',
         token,
-        username: user.username
+        username: user.username,
       });
     } else {
       // User was not found or password was incorrect
@@ -339,14 +336,11 @@ app.get('/api/pokemon', pokemonLimiter, async (req, res) => {
     const data = await getCached(
       cacheKey,
       async () => {
-        const response = await axios.get(
-          `${BASE_URL}/pokemon?offset=${offset}&limit=${limit}`,
-          {
-            headers: {
-              'User-Agent': 'PokeWorld/1.0 (fan project; https://pokeapi.co)',
-            },
+        const response = await axios.get(`${BASE_URL}/pokemon?offset=${offset}&limit=${limit}`, {
+          headers: {
+            'User-Agent': 'PokeWorld/1.0 (fan project; https://pokeapi.co)',
           },
-        );
+        });
         return response.data;
       },
       CACHE_TTL.MEDIUM,
@@ -445,7 +439,7 @@ app.post('/api/users/favorites', authenticateUser, async (req, res) => {
     // $addToSet adds the Pokémon only if it is not already in favorites
     await collection.updateOne(
       req.user?.email ? { email: req.user.email } : { username: req.user?.username },
-      { $addToSet: { favorites: pokemonName } }
+      { $addToSet: { favorites: pokemonName } },
     );
 
     res.send('Favorite added');
@@ -472,7 +466,7 @@ app.delete('/api/users/favorites/:pokemonName', authenticateUser, async (req, re
     // $pull removes the Pokémon name from the favorites array
     await collection.updateOne(
       req.user?.email ? { email: req.user.email } : { username: req.user?.username },
-      { $pull: { favorites: pokemonName } } as unknown as UpdateFilter<Document>
+      { $pull: { favorites: pokemonName } } as unknown as UpdateFilter<Document>,
     );
 
     res.send('Favorite removed');
@@ -519,10 +513,7 @@ app.post('/api/users/google', authLimiter, async (req, res) => {
 
     // Find an existing Google user by googleId or email
     let user = await collection.findOne({
-      $or: [
-        { googleId },
-        { email }
-      ]
+      $or: [{ googleId }, { email }],
     });
 
     // If the Google user does not exist yet, create a new account
@@ -546,7 +537,7 @@ app.post('/api/users/google', authLimiter, async (req, res) => {
         email: user!.email,
       },
       process.env.JWT_SECRET as string,
-      { expiresIn: '1d' } // Token expires after 1 day
+      { expiresIn: '1d' }, // Token expires after 1 day
     );
 
     // Example response:
@@ -651,16 +642,15 @@ app.post('/api/chatbot', chatbotLimiter, async (req, res) => {
     return res.json({ reply: quickReply });
   }
 
-  if (
-    !GEMINI_API_KEY ||
-    GEMINI_API_KEY === 'your_gemini_api_key_here'
-  ) {
-    return res.status(503).json(
-      chatbotError(
-        'AGENT_OFFLINE',
-        `${AGENT_NAME} isn't connected right now. You can still explore the site — or visit the Contact page if you need help.`,
-      ),
-    );
+  if (!GEMINI_API_KEY || GEMINI_API_KEY === 'your_gemini_api_key_here') {
+    return res
+      .status(503)
+      .json(
+        chatbotError(
+          'AGENT_OFFLINE',
+          `${AGENT_NAME} isn't connected right now. You can still explore the site — or visit the Contact page if you need help.`,
+        ),
+      );
   }
 
   const safeHistory = Array.isArray(history)
@@ -704,63 +694,73 @@ app.post('/api/chatbot', chatbotLimiter, async (req, res) => {
 
       if (status === 429) {
         if (isZeroQuotaError(apiMessage)) {
-          return res.status(503).json(
-            chatbotError(
-              'AGENT_OFFLINE',
-              `${AGENT_NAME} can't answer custom questions right now. Try the quick prompts below, or use the Contact page — those always work!`,
-            ),
-          );
+          return res
+            .status(503)
+            .json(
+              chatbotError(
+                'AGENT_OFFLINE',
+                `${AGENT_NAME} can't answer custom questions right now. Try the quick prompts below, or use the Contact page — those always work!`,
+              ),
+            );
         }
 
         if (apiMessage?.toLowerCase().includes('high demand')) {
-          return res.status(503).json(
-            chatbotError(
-              'AGENT_BUSY',
-              `${AGENT_NAME} is a little overwhelmed — lots of trainers asking questions at once! Wait a few seconds and try again.`,
-            ),
-          );
+          return res
+            .status(503)
+            .json(
+              chatbotError(
+                'AGENT_BUSY',
+                `${AGENT_NAME} is a little overwhelmed — lots of trainers asking questions at once! Wait a few seconds and try again.`,
+              ),
+            );
         }
 
-        return res.status(429).json(
-          chatbotError(
-            'AGENT_RATE_LIMITED',
-            `${AGENT_NAME} needs a breather — you've hit the message limit. Wait a minute and try again.`,
-          ),
-        );
+        return res
+          .status(429)
+          .json(
+            chatbotError(
+              'AGENT_RATE_LIMITED',
+              `${AGENT_NAME} needs a breather — you've hit the message limit. Wait a minute and try again.`,
+            ),
+          );
       }
 
       if (status === 503 || apiMessage?.toLowerCase().includes('high demand')) {
-        return res.status(503).json(
-          chatbotError(
-            'AGENT_BUSY',
-            `${AGENT_NAME} is taking a quick rest — the servers are busy. Try again in a few seconds!`,
-          ),
-        );
+        return res
+          .status(503)
+          .json(
+            chatbotError(
+              'AGENT_BUSY',
+              `${AGENT_NAME} is taking a quick rest — the servers are busy. Try again in a few seconds!`,
+            ),
+          );
       }
 
       if (status === 401 || status === 403) {
-        return res.status(503).json(
-          chatbotError(
-            'AGENT_OFFLINE',
-            `${AGENT_NAME} isn't available right now. Use the quick prompts below or the Contact page in the meantime.`,
-          ),
-        );
+        return res
+          .status(503)
+          .json(
+            chatbotError(
+              'AGENT_OFFLINE',
+              `${AGENT_NAME} isn't available right now. Use the quick prompts below or the Contact page in the meantime.`,
+            ),
+          );
       }
 
       if (apiMessage) {
-        return res.status(500).json(
-          chatbotError('AGENT_ERROR', `${AGENT_NAME} ran into a hiccup. Please try again.`),
-        );
+        return res
+          .status(500)
+          .json(chatbotError('AGENT_ERROR', `${AGENT_NAME} ran into a hiccup. Please try again.`));
       }
     }
 
-    res.status(500).json(
-      chatbotError('AGENT_ERROR', `${AGENT_NAME} ran into a hiccup. Please try again.`),
-    );
+    res
+      .status(500)
+      .json(chatbotError('AGENT_ERROR', `${AGENT_NAME} ran into a hiccup. Please try again.`));
   }
 });
 
 // Start the server
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`); 
+  console.log(`Server is running on port ${PORT}`);
 });

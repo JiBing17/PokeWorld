@@ -1,14 +1,5 @@
 import React from 'react';
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  CardMedia,
-  Button,
-  Chip,
-  Stack,
-} from '@mui/material';
+import { Box, Card, CardContent, Typography, CardMedia, Button, Chip, Stack } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
 import StyleOutlinedIcon from '@mui/icons-material/StyleOutlined';
@@ -62,8 +53,7 @@ function TcgSetCard({ set, onViewDetails }: TcgSetCardProps) {
           sx={{
             position: 'absolute',
             inset: 0,
-            background:
-              'linear-gradient(135deg, rgba(194,46,40,0.08), rgba(61,125,202,0.08))',
+            background: 'linear-gradient(135deg, rgba(194,46,40,0.08), rgba(61,125,202,0.08))',
           }}
         />
 

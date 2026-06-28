@@ -1,16 +1,6 @@
 import React from 'react';
-import {
-  Box,
-  Typography,
-  Button,
-  Chip,
-  Paper,
-  Stack,
-} from '@mui/material';
-import {
-  ArrowBack,
-  OpenInNew,
-} from '@mui/icons-material';
+import { Box, Typography, Button, Chip, Paper, Stack } from '@mui/material';
+import { ArrowBack, OpenInNew } from '@mui/icons-material';
 import { TMDB_BACKDROP_BASE_URL, TMDB_POSTER_BASE_URL, PLACEHOLDER } from '../../utils/constants';
 import type { MovieHeroProps } from '../../types';
 
@@ -25,7 +15,6 @@ function MovieHero({
   primaryButtonText = 'View Details', // text shown inside the main action button
   primaryButtonIcon, // optional custom icon for the main action button
 }: MovieHeroProps) {
-
   // If no movie is provided, return null
   if (!movie) return null;
 
@@ -33,14 +22,12 @@ function MovieHero({
   const heroImage = movie.backdrop_path
     ? `${TMDB_BACKDROP_BASE_URL}${movie.backdrop_path}` // Prefer wide backdrop image
     : movie.poster_path
-    ? `${TMDB_POSTER_BASE_URL}${movie.poster_path}` // Fallback to poster image
-    : PLACEHOLDER; // Final fallback if TMDB has no image
+      ? `${TMDB_POSTER_BASE_URL}${movie.poster_path}` // Fallback to poster image
+      : PLACEHOLDER; // Final fallback if TMDB has no image
 
   // Get the release year from the full release date
   // Example: "1998-07-18" becomes "1998"
-  const releaseYear = movie.release_date
-    ? movie.release_date.split('-')[0]
-    : 'N/A';
+  const releaseYear = movie.release_date ? movie.release_date.split('-')[0] : 'N/A';
 
   return (
     <Paper
@@ -180,13 +167,7 @@ function MovieHero({
             {movie.title}
           </Typography>
 
-          <Stack
-            direction="row"
-            spacing={1}
-            useFlexGap
-            flexWrap="wrap"
-            sx={{ mb: 3 }}
-          >
+          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 3 }}>
             {movie.genre_ids?.slice(0, 4).map((gId) => (
               <Chip
                 key={gId}

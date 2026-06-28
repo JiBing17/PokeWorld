@@ -16,33 +16,37 @@ import Privacy from './components/Privacy';
 
 // Sets up the router and provides authentication context to all routes
 function App() {
-    return (
-        <AuthProvider> { /** Provides authentication state to the entire app **/ }
-            <Router>
-                <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', overflowX: 'clip' }}>
-                    <Box sx={{ flex: 1 }}>
-                        <Routes>
-                            {/** Home page is public and loads first **/}
-                            <Route path="/" element={<Home />} />
+  return (
+    <AuthProvider>
+      {' '}
+      {/** Provides authentication state to the entire app **/}
+      <Router>
+        <Box
+          sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', overflowX: 'clip' }}
+        >
+          <Box sx={{ flex: 1 }}>
+            <Routes>
+              {/** Home page is public and loads first **/}
+              <Route path="/" element={<Home />} />
 
-                            {/** Public routes **/}
-                            <Route path="/pokemon/:pokemonName" element={<PokemonDetails />} />
-                            <Route path="/movies" element={<Movies />} />
-                            <Route path="/trading" element={<TcgMarket />} />
-                            <Route path="/movie/:id" element={<MovieDetail />} />
-                            <Route path="/sets" element={<SetGallery />} />
-                            <Route path="/pokemon/favorites" element={<Favorites />} />
-                            <Route path="/contact" element={<Contact />} />
-                            <Route path="/privacy" element={<Privacy />} />
-                            {/* needs work <Route path="/items" element={<Items />} /> */}
-                        </Routes>
-                    </Box>
-                    <SiteFooter />
-                </Box>
-                <SiteChatbot />
-            </Router>
-        </AuthProvider>
-    );
+              {/** Public routes **/}
+              <Route path="/pokemon/:pokemonName" element={<PokemonDetails />} />
+              <Route path="/movies" element={<Movies />} />
+              <Route path="/trading" element={<TcgMarket />} />
+              <Route path="/movie/:id" element={<MovieDetail />} />
+              <Route path="/sets" element={<SetGallery />} />
+              <Route path="/pokemon/favorites" element={<Favorites />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/privacy" element={<Privacy />} />
+              {/* needs work <Route path="/items" element={<Items />} /> */}
+            </Routes>
+          </Box>
+          <SiteFooter />
+        </Box>
+        <SiteChatbot />
+      </Router>
+    </AuthProvider>
+  );
 }
 
 export default App;

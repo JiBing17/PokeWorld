@@ -1,22 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import {
-  Box,
-  Typography,
-  Button,
-  Paper,
-  Stack,
-  Divider,
-} from '@mui/material';
+import { Box, Typography, Button, Paper, Stack, Divider } from '@mui/material';
 import PageShell from '../layout/PageShell';
 import MovieCard from './MovieCard';
 import MovieHero from './MovieHero';
 import CastCard from './CastCard';
 import HorizontalScrollRow from './HorizontalScrollRow';
-import {
-  fetchPokemonMovies,
-  fetchMovieCast,
-} from '../../utils/moviesAPI';
+import { fetchPokemonMovies, fetchMovieCast } from '../../utils/moviesAPI';
 import { useMovieNavigation } from '../../hooks/useMovieNavigation';
 import type { MovieNavigationState, TmdbCastMember, TmdbMovie } from '../../types';
 
@@ -78,7 +68,6 @@ export default function MovieDetail() {
   if (!movie) {
     return (
       <PageShell>
-
         <Box
           sx={{
             minHeight: '100vh',
@@ -128,10 +117,9 @@ export default function MovieDetail() {
   }
   // Get the runtime of the current movie in the case that it is available
   const runtime = durations?.[movie.id] ? `${durations[movie.id]} mins` : 'N/A';
-  
+
   return (
     <PageShell>
-
       {/* Backdrop + Overlay + Info */}
       <Box sx={{ pt: { xs: 10, md: 11 }, pb: 5 }}>
         <Box
@@ -152,7 +140,7 @@ export default function MovieDetail() {
               window.open(
                 `https://www.themoviedb.org/movie/${movie.id}`,
                 '_blank',
-                'noopener,noreferrer'
+                'noopener,noreferrer',
               )
             }
           />
@@ -209,23 +197,16 @@ export default function MovieDetail() {
               <Stack direction="row" spacing={1}>
                 <Button
                   onClick={() => setActiveTab('Pokémon Movies')}
-                  variant={
-                    activeTab === 'Pokémon Movies' ? 'contained' : 'outlined'
-                  }
+                  variant={activeTab === 'Pokémon Movies' ? 'contained' : 'outlined'}
                   sx={{
                     textTransform: 'none',
                     fontWeight: 800,
                     borderRadius: 999,
-                    bgcolor:
-                      activeTab === 'Pokémon Movies' ? '#C22E28' : 'white',
+                    bgcolor: activeTab === 'Pokémon Movies' ? '#C22E28' : 'white',
                     borderColor: '#E5E7EB',
-                    color:
-                      activeTab === 'Pokémon Movies' ? 'white' : '#374151',
+                    color: activeTab === 'Pokémon Movies' ? 'white' : '#374151',
                     '&:hover': {
-                      bgcolor:
-                        activeTab === 'Pokémon Movies'
-                          ? '#B22222'
-                          : '#F9FAFB',
+                      bgcolor: activeTab === 'Pokémon Movies' ? '#B22222' : '#F9FAFB',
                       borderColor: '#D1D5DB',
                     },
                   }}
@@ -270,10 +251,7 @@ export default function MovieDetail() {
                           },
                         }}
                       >
-                        <MovieCard
-                          movie={pokeMovie}
-                          onClick={() => handleMovieClick(pokeMovie)}
-                        />
+                        <MovieCard movie={pokeMovie} onClick={() => handleMovieClick(pokeMovie)} />
                       </Box>
                     ))
                   : castMembers.map((member) => (

@@ -6,9 +6,7 @@ export const getMarketPrice = (card: TcgCard): number | null =>
   card.tcgplayer?.prices?.reverseHolofoil?.market ??
   null;
 
-export const getPriceBreakdown = (
-  card: TcgCard,
-): Array<{ label: string; value: number }> => {
+export const getPriceBreakdown = (card: TcgCard): Array<{ label: string; value: number }> => {
   const prices = card.tcgplayer?.prices;
   if (!prices) return [];
 

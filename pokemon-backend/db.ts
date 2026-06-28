@@ -26,7 +26,7 @@ export default async function connectToDatabase(): Promise<Db> {
       db = client.db('pokeAPI');
       console.log('Connected to MongoDB Atlas');
 
-    // Log any errors that occur during the connection process
+      // Log any errors that occur during the connection process
     } catch (err) {
       console.error('Failed to connect to MongoDB', err);
       throw err;

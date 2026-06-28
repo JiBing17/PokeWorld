@@ -109,7 +109,11 @@ function Header() {
                 </Tooltip>
               ) : (
                 <Tooltip title="Login or create an account to save favorites">
-                  <IconButton color="inherit" onClick={() => setShowAuthPopup(true)} sx={{ ml: 0.5 }}>
+                  <IconButton
+                    color="inherit"
+                    onClick={() => setShowAuthPopup(true)}
+                    sx={{ ml: 0.5 }}
+                  >
                     <AccountCircleIcon />
                   </IconButton>
                 </Tooltip>
@@ -175,7 +179,10 @@ function Header() {
               <ListItemIcon sx={{ color: '#C22E28', minWidth: 40 }}>
                 <AccountCircleIcon />
               </ListItemIcon>
-              <ListItemText primary="Login / Sign up" primaryTypographyProps={{ fontWeight: 700 }} />
+              <ListItemText
+                primary="Login / Sign up"
+                primaryTypographyProps={{ fontWeight: 700 }}
+              />
             </ListItemButton>
           )}
         </List>

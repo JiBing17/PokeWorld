@@ -1,14 +1,5 @@
 import React from 'react';
-import {
-  Box,
-  Card,
-  CardMedia,
-  CardContent,
-  Typography,
-  Chip,
-  Stack,
-  alpha,
-} from '@mui/material';
+import { Box, Card, CardMedia, CardContent, Typography, Chip, Stack, alpha } from '@mui/material';
 import { POKE_RED, POKE_YELLOW, POKE_BLUE } from './tcgTheme';
 import { getMarketPrice } from './tcgPriceUtils';
 import type { TcgCard } from './tcgTypes';

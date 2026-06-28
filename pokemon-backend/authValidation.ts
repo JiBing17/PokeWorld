@@ -1,7 +1,4 @@
-export function validateCredentials(
-  username: unknown,
-  password: unknown,
-): string | null {
+export function validateCredentials(username: unknown, password: unknown): string | null {
   if (typeof username !== 'string' || typeof password !== 'string') {
     return 'Username and password are required.';
   }

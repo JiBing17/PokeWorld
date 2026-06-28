@@ -38,9 +38,7 @@ async function mapWithConcurrency<T, R>(
     }
   }
 
-  await Promise.all(
-    Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
-  );
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
 
   return results;
 }
@@ -91,11 +89,7 @@ export async function batchFetchPokemon(req: Request, res: Response): Promise<vo
   }
 
   try {
-    const results = await mapWithConcurrency(
-      validNames,
-      BATCH_CONCURRENCY,
-      fetchPokemonSummary,
-    );
+    const results = await mapWithConcurrency(validNames, BATCH_CONCURRENCY, fetchPokemonSummary);
 
     res.set('Cache-Control', 'public, max-age=300');
     res.json(results);

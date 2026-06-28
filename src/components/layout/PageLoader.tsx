@@ -7,10 +7,7 @@ interface PageLoaderProps {
   fullScreen?: boolean;
 }
 
-export default function PageLoader({
-  message = 'Loading...',
-  fullScreen = true,
-}: PageLoaderProps) {
+export default function PageLoader({ message = 'Loading...', fullScreen = true }: PageLoaderProps) {
   return (
     <PageShell>
       <Box

@@ -40,11 +40,7 @@ export const addUserFavorite = async (pokemonName: string): Promise<void> => {
     throw new Error('Not authenticated');
   }
 
-  await apiClient.post(
-    '/users/favorites',
-    { pokemonName },
-    { headers }
-  );
+  await apiClient.post('/users/favorites', { pokemonName }, { headers });
 };
 
 // Removes one Pokémon from the user's favorites
@@ -64,7 +60,7 @@ export const removeUserFavorite = async (pokemonName: string): Promise<void> => 
 // Toggles a Pokémon favorite on or off
 export const toggleUserFavorite = async (
   pokemonName: string,
-  favorites: FavoritesMap
+  favorites: FavoritesMap,
 ): Promise<FavoritesMap> => {
   // If already favorited, remove it
   if (favorites[pokemonName]) {

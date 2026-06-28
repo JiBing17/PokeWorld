@@ -36,8 +36,7 @@ import { isAbortError } from './utils/retryUtils';
 // PokeAPI constants
 const POKEAPI_BASE = 'https://pokeapi.co/api/v2';
 const ITEMS_ENDPOINT = `${POKEAPI_BASE}/item`;
-const PLACEHOLDER =
-  'https://upload.wikimedia.org/wikipedia/commons/b/b1/Loading_icon.gif';
+const PLACEHOLDER = 'https://upload.wikimedia.org/wikipedia/commons/b/b1/Loading_icon.gif';
 
 interface PokemonApiListItem {
   name: string;
@@ -101,7 +100,7 @@ export default function Items() {
     const fetchAllItems = async () => {
       try {
         const res = await axios.get<{ results: PokemonApiListItem[] }>(
-          `${ITEMS_ENDPOINT}?limit=10000`
+          `${ITEMS_ENDPOINT}?limit=10000`,
         );
         setAllItemsList(res.data.results);
       } catch (err) {
@@ -119,7 +118,7 @@ export default function Items() {
       try {
         const offset = (currentPage - 1) * ITEMS_PER_PAGE;
         const res = await axios.get<{ results: PokemonApiListItem[]; count: number }>(
-          `${ITEMS_ENDPOINT}?offset=${offset}&limit=${ITEMS_PER_PAGE}`
+          `${ITEMS_ENDPOINT}?offset=${offset}&limit=${ITEMS_PER_PAGE}`,
         );
         setPageItems(res.data.results);
         setTotalPages(Math.ceil(res.data.count / ITEMS_PER_PAGE));
@@ -167,9 +166,7 @@ export default function Items() {
   const enrichedSearchResults = useMemo((): EnrichedItem[] => {
     const q = debouncedSearchQuery.toLowerCase();
     if (q === '') return [];
-    const matches = allItemsList.filter((item) =>
-      item.name.toLowerCase().includes(q)
-    );
+    const matches = allItemsList.filter((item) => item.name.toLowerCase().includes(q));
     return matches.map((item) => {
       const id = getIdFromUrl(item.url);
       return {
@@ -253,7 +250,7 @@ export default function Items() {
 
   return (
     <Box>
-      <Header/>
+      <Header />
       {/* Search Bar (outside header) */}
       <Box sx={{ p: 2, bgcolor: 'background.paper', mt: 10 }}>
         <TextField
@@ -280,12 +277,7 @@ export default function Items() {
             <CircularProgress />
           </Box>
         ) : dataToDisplay.length === 0 ? (
-          <Typography
-            variant="h6"
-            align="center"
-            color="text.secondary"
-            sx={{ mt: 4 }}
-          >
+          <Typography variant="h6" align="center" color="text.secondary" sx={{ mt: 4 }}>
             {searchQuery.trim() !== ''
               ? 'No items match your search.'
               : 'No items to display on this page.'}
@@ -317,16 +309,10 @@ export default function Items() {
                       top: 4,
                       right: 4,
                       zIndex: 1,
-                      color: favorites[item.name]
-                        ? 'red'
-                        : 'rgba(0,0,0,0.4)',
+                      color: favorites[item.name] ? 'red' : 'rgba(0,0,0,0.4)',
                     }}
                   >
-                    {favorites[item.name] ? (
-                      <Favorite />
-                    ) : (
-                      <FavoriteBorder />
-                    )}
+                    {favorites[item.name] ? <Favorite /> : <FavoriteBorder />}
                   </IconButton>
 
                   {/* Item Sprite */}
@@ -548,10 +534,7 @@ export default function Items() {
                       overflowY: 'auto',
                     }}
                   >
-                    <Typography
-                      variant="subtitle2"
-                      sx={{ fontWeight: 'bold', mb: 1 }}
-                    >
+                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
                       Effect
                     </Typography>
                     <Typography variant="body2" sx={{ lineHeight: 1.6 }}>

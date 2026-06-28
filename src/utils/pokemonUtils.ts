@@ -60,9 +60,7 @@ export function buildEnrichedPokemonFromListItem(pokemon: PokemonListItem): Enri
   };
 }
 
-async function fetchPokemonTypesBatch(
-  names: string[],
-): Promise<Record<string, PokemonTypeSlot[]>> {
+async function fetchPokemonTypesBatch(names: string[]): Promise<Record<string, PokemonTypeSlot[]>> {
   if (names.length === 0) {
     return {};
   }
@@ -115,9 +113,7 @@ export const enrichPokemonList = async (
   }
 };
 
-export const mapApiResponseToEnrichedPokemon = (
-  data: PokemonApiResponse,
-): EnrichedPokemon => ({
+export const mapApiResponseToEnrichedPokemon = (data: PokemonApiResponse): EnrichedPokemon => ({
   name: data.name,
   url: `${POKEMON_URL}/${data.name}`,
   id: data.id,

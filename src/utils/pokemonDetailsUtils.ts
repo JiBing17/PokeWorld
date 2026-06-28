@@ -26,9 +26,7 @@ export const INITIAL_MOVE_BATCH = 12;
 export const MOVE_LOAD_MORE_BATCH = 9;
 
 export const getEnglishDescription = (flavorTextEntries: FlavorTextEntry[]): string => {
-  const englishEntry = flavorTextEntries.find(
-    (entry) => entry.language.name === 'en',
-  );
+  const englishEntry = flavorTextEntries.find((entry) => entry.language.name === 'en');
   return englishEntry?.flavor_text.replace(/\f/g, ' ') || '';
 };
 
@@ -43,9 +41,8 @@ async function fetchMoveDetail(url: string): Promise<MoveDetail> {
         power: response.data.power,
         accuracy: response.data.accuracy,
         pp: response.data.pp,
-        description: response.data.effect_entries.find(
-          (entry) => entry.language.name === 'en',
-        )?.effect,
+        description: response.data.effect_entries.find((entry) => entry.language.name === 'en')
+          ?.effect,
       };
     },
     { ttlMs: CACHE_TTL.LONG },

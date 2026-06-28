@@ -8,10 +8,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import {
-  NavigateBefore,
-  NavigateNext,
-} from '@mui/icons-material';
+import { NavigateBefore, NavigateNext } from '@mui/icons-material';
 import Authpopup from './components/Authpopup';
 import SearchBar from './components/SearchBar';
 import PageShell from './components/layout/PageShell';
@@ -23,11 +20,7 @@ import { getErrorMessage } from './utils/errorUtils';
 import { apiClient } from './utils/apiClient';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useFavorites } from './hooks/useFavorites';
-import {
-  PAGE_SIZE,
-  SEARCH_RESULT_LIMIT,
-  FIRST_ID_BY_GEN,
-} from './utils/constants';
+import { PAGE_SIZE, SEARCH_RESULT_LIMIT, FIRST_ID_BY_GEN } from './utils/constants';
 import type { EnrichedPokemon, PokemonListItem } from './types';
 
 type SelectedGen = 'all' | number;
@@ -48,13 +41,8 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState(''); // instant search input value as the user types
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 350); // delayed search value used after typing pauses
   const [enrichedSearchResults, setEnrichedSearchResults] = useState<EnrichedPokemon[]>([]); // search results with id, generation, spriteUrl, and types
-  const {
-    favorites,
-    showAuthPopup,
-    setShowAuthPopup,
-    fetchFavorites,
-    toggleFavorite,
-  } = useFavorites();
+  const { favorites, showAuthPopup, setShowAuthPopup, fetchFavorites, toggleFavorite } =
+    useFavorites();
 
   // Stores already-enriched Pokémon by ( name -> obj ). caching doesnt affect UI so use useRef to prevent rerenders
   const enrichedPokemonCache = useRef<Record<string, EnrichedPokemon>>({});
@@ -72,9 +60,7 @@ export default function Home() {
       });
     }
 
-    return pokemonList
-      .map((pokemon) => enrichedPokemonCache.current[pokemon.name])
-      .filter(Boolean);
+    return pokemonList.map((pokemon) => enrichedPokemonCache.current[pokemon.name]).filter(Boolean);
   };
 
   // Loads the full Pokémon list only when search is used (avoids a heavy request on initial page load)
@@ -111,7 +97,7 @@ export default function Home() {
         // limit = 48
         // offset = (page - 1) * limit = 48
         const res = await apiClient.get<{ results: PokemonListItem[]; count: number }>(
-          `/pokemon?page=${currentPage}&limit=${PAGE_SIZE}`
+          `/pokemon?page=${currentPage}&limit=${PAGE_SIZE}`,
         );
 
         // Example res.data.results: - list of pokemons for current page
@@ -155,8 +141,7 @@ export default function Home() {
 
       const immediate = pokemonData.map(
         (pokemon) =>
-          enrichedPokemonCache.current[pokemon.name] ??
-          buildEnrichedPokemonFromListItem(pokemon),
+          enrichedPokemonCache.current[pokemon.name] ?? buildEnrichedPokemonFromListItem(pokemon),
       );
 
       if (!isCancelled) {
@@ -330,12 +315,7 @@ export default function Home() {
     }
 
     return list;
-  }, [
-    debouncedSearchQuery,
-    enrichedSearchResults,
-    enrichedPagePokemon,
-    selectedGen,
-  ]);
+  }, [debouncedSearchQuery, enrichedSearchResults, enrichedPagePokemon, selectedGen]);
 
   // Handles generation filter clicks
   const handleGenClick = (gen: SelectedGen) => {
@@ -370,8 +350,7 @@ export default function Home() {
   const isTypingSearch = searchQuery.trim() !== debouncedSearchQuery.trim();
 
   // True when a search is active or search results are being prepared
-  const isSearching =
-    searchQuery.trim() !== '' && (isTypingSearch || isSearchEnriching);
+  const isSearching = searchQuery.trim() !== '' && (isTypingSearch || isSearchEnriching);
 
   // True when the normal page data is loading or being enriched
   const isPageBusy = isLoading || isPageEnriching;
@@ -393,7 +372,6 @@ export default function Home() {
 
   return (
     <PageShell>
-
       <Box
         sx={{
           px: { xs: 2, md: 3 },
@@ -430,9 +408,7 @@ export default function Home() {
             <CircularProgress sx={{ color: '#C22E28' }} />
 
             <Typography variant="body1" sx={{ fontWeight: 700 }}>
-              {searchQuery.trim()
-                ? 'Searching Pokédex...'
-                : 'Loading Pokémon...'}
+              {searchQuery.trim() ? 'Searching Pokédex...' : 'Loading Pokémon...'}
             </Typography>
           </Box>
         ) : dataToDisplay.length === 0 ? (
@@ -465,8 +441,9 @@ export default function Home() {
           </Grid>
         )}
 
-        {!searchQuery.trim() && totalPages > 1 && (
-          isMobile ? (
+        {!searchQuery.trim() &&
+          totalPages > 1 &&
+          (isMobile ? (
             <TcgPagination
               page={currentPage}
               totalPages={totalPages}
@@ -543,15 +520,11 @@ export default function Home() {
                 </Typography>
               </Box>
             </>
-          )
-        )}
+          ))}
       </Box>
 
       {showAuthPopup && (
-        <Authpopup
-          onClose={() => setShowAuthPopup(false)}
-          onSuccess={fetchFavorites}
-        />
+        <Authpopup onClose={() => setShowAuthPopup(false)} onSuccess={fetchFavorites} />
       )}
     </PageShell>
   );

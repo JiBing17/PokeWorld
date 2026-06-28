@@ -30,9 +30,7 @@ function mapItemDetail(data: PokeApiItemDetail): EnrichedItem {
     id: data.id,
     cost: data.cost,
     category: data.category.name,
-    effect:
-      data.effect_entries.find((e) => e.language.name === 'en')?.short_effect ??
-      null,
+    effect: data.effect_entries.find((e) => e.language.name === 'en')?.short_effect ?? null,
     spriteUrl: getItemSpriteUrl(data.name),
   };
 }
@@ -41,17 +39,13 @@ export async function fetchItemDetail(
   nameOrUrl: string,
   signal?: AbortSignal,
 ): Promise<EnrichedItem> {
-  const url = nameOrUrl.startsWith('http')
-    ? nameOrUrl
-    : `${POKEAPI_BASE}/item/${nameOrUrl}`;
+  const url = nameOrUrl.startsWith('http') ? nameOrUrl : `${POKEAPI_BASE}/item/${nameOrUrl}`;
   const cacheKey = `pokeapi:item:${url}`;
 
   return getCached(
     cacheKey,
     async () => {
-      const res = await withRetry(() =>
-        axios.get<PokeApiItemDetail>(url, { signal }),
-      );
+      const res = await withRetry(() => axios.get<PokeApiItemDetail>(url, { signal }));
       return mapItemDetail(res.data);
     },
     { ttlMs: CACHE_TTL.LONG },

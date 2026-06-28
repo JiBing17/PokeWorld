@@ -6,8 +6,7 @@ import { CACHE_TTL, getCached } from './apiCache';
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TCG_BASE = 'https://api.pokemontcg.io/v2';
 
-const TMDB_PATH_PATTERN =
-  /^\/(search\/movie|genre\/movie\/list|movie\/\d+(?:\/credits)?)$/;
+const TMDB_PATH_PATTERN = /^\/(search\/movie|genre\/movie\/list|movie\/\d+(?:\/credits)?)$/;
 const TCG_PATH_PATTERN = /^\/(cards|sets(?:\/[\w.-]+)?)$/;
 
 export const apiProxyLimiter = rateLimit({

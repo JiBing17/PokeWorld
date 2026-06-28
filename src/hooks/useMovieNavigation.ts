@@ -21,7 +21,7 @@ export function useMovieNavigation(context: MovieNavigationContext = {}) {
         },
       });
     },
-    [navigate, genres, durations]
+    [navigate, genres, durations],
   );
 
   const goToMovies = useCallback(() => {

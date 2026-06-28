@@ -1,13 +1,5 @@
 import React from 'react';
-import {
-  Box,
-  Container,
-  Divider,
-  Grid,
-  Link,
-  Stack,
-  Typography,
-} from '@mui/material';
+import { Box, Container, Divider, Grid, Link, Stack, Typography } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 
 const TMDB_LOGO = `${process.env.PUBLIC_URL ?? ''}/tmdb-logo.svg`;
@@ -59,8 +51,8 @@ export default function SiteFooter() {
               PokéWorld
             </Typography>
             <Typography variant="body2" sx={{ color: '#4B5563', lineHeight: 1.6, maxWidth: 420 }}>
-              An unofficial fan project for exploring Pokémon, TCG cards, and movies. Not
-              affiliated with Nintendo, Game Freak, Creatures Inc., or The Pokémon Company.
+              An unofficial fan project for exploring Pokémon, TCG cards, and movies. Not affiliated
+              with Nintendo, Game Freak, Creatures Inc., or The Pokémon Company.
             </Typography>
           </Grid>
 
@@ -142,8 +134,8 @@ export default function SiteFooter() {
               />
             </Box>
             <Typography variant="caption" sx={{ color: '#6B7280', lineHeight: 1.65 }}>
-              This product uses TMDB and the TMDB APIs but is not endorsed, certified, or
-              otherwise approved by TMDB.
+              This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise
+              approved by TMDB.
             </Typography>
           </Stack>
         </Box>

@@ -15,11 +15,7 @@ import ChatIcon from '@mui/icons-material/Chat';
 import CloseIcon from '@mui/icons-material/Close';
 import SendIcon from '@mui/icons-material/Send';
 import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
-import {
-  AGENT_NAME,
-  sendChatMessage,
-  type ChatMessage,
-} from '../../utils/chatbotApi';
+import { AGENT_NAME, sendChatMessage, type ChatMessage } from '../../utils/chatbotApi';
 import { pokeTextFieldSx } from '../../utils/formFieldStyles';
 
 const POKE_RED = '#C22E28';
@@ -162,7 +158,12 @@ export default function SiteChatbot() {
             ))}
 
             {isLoading && (
-              <Stack direction="row" spacing={1} alignItems="center" sx={{ color: 'text.secondary' }}>
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                sx={{ color: 'text.secondary' }}
+              >
                 <CircularProgress size={16} sx={{ color: POKE_RED }} />
                 <Typography variant="caption">{AGENT_NAME} is thinking...</Typography>
               </Stack>

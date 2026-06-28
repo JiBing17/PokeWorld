@@ -1,11 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Typography,
-  Container,
-  Grid,
-  Box,
-  IconButton,
-} from '@mui/material';
+import { Typography, Container, Grid, Box, IconButton } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft, faArrowRight } from '@fortawesome/free-solid-svg-icons';
 import PageShell from '../layout/PageShell';
@@ -13,11 +7,7 @@ import PageLoader from '../layout/PageLoader';
 import MovieCard from './MovieCard';
 import MovieHero from './MovieHero';
 import SearchBar from '../SearchBar';
-import {
-  fetchMovieGenres,
-  fetchPokemonMovies,
-  fetchMovieDurations,
-} from '../../utils/moviesAPI';
+import { fetchMovieGenres, fetchPokemonMovies, fetchMovieDurations } from '../../utils/moviesAPI';
 import { getErrorMessage } from '../../utils/errorUtils';
 import { useMovieNavigation } from '../../hooks/useMovieNavigation';
 import type { DurationMap, GenreMap, TmdbMovie } from '../../types';
@@ -124,7 +114,7 @@ export default function Movies() {
       //
       // Keeps movies whose title includes "mewtwo"
       const filtered = movies.filter((movie) =>
-        movie.title.toLowerCase().includes(searchTerm.toLowerCase())
+        movie.title.toLowerCase().includes(searchTerm.toLowerCase()),
       );
 
       setFilteredMovies(filtered);
@@ -138,16 +128,12 @@ export default function Movies() {
 
   // Carousel navigation to show prev hero display movie from featured
   const handlePrev = () => {
-    setHeroIndex((prev) =>
-      prev === 0 ? featuredMovies.length - 1 : prev - 1
-    );
+    setHeroIndex((prev) => (prev === 0 ? featuredMovies.length - 1 : prev - 1));
   };
 
   // Carousel navigation to show next hero display movie from featured
   const handleNext = () => {
-    setHeroIndex((prev) =>
-      prev === featuredMovies.length - 1 ? 0 : prev + 1
-    );
+    setHeroIndex((prev) => (prev === featuredMovies.length - 1 ? 0 : prev + 1));
   };
 
   // Handles clicking on a movie to navigate to its details page
@@ -175,7 +161,6 @@ export default function Movies() {
 
   return (
     <PageShell>
-
       {/* ─── TAILWIND CAROUSEL │ HERO SECTION ───────────────────────────────── */}
       <Box sx={{ pt: { xs: 10, md: 11 } }}>
         <Container maxWidth="lg">
@@ -244,7 +229,7 @@ export default function Movies() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        
+
         {filteredMovies.length === 0 ? (
           <Typography variant="h6" align="center" color="text.secondary">
             No movies found.
@@ -253,14 +238,11 @@ export default function Movies() {
           <Grid container spacing={4}>
             {filteredMovies.map((movie) => (
               <Grid item key={movie.id} xs={12} sm={6} md={4} lg={3}>
-                <MovieCard
-                  movie={movie}
-                  onClick={() => handleMovieClick(movie)}
-                />
+                <MovieCard movie={movie} onClick={() => handleMovieClick(movie)} />
               </Grid>
             ))}
           </Grid>
-        )}    
+        )}
       </Container>
     </PageShell>
   );

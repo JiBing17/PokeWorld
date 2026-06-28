@@ -19,9 +19,7 @@ export default function SetGallery() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
 
-  const filteredSets = sets.filter((s) =>
-    s.name.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filteredSets = sets.filter((s) => s.name.toLowerCase().includes(search.toLowerCase()));
 
   const paginatedSets =
     search.trim() === ''
@@ -62,7 +60,11 @@ export default function SetGallery() {
           loading={loading}
           loadingMessage="Loading sets..."
           error={error ? `Error loading sets: ${getErrorMessage(error)}` : undefined}
-          empty={!loading && !error && paginatedSets.length === 0 ? 'No sets match your search.' : undefined}
+          empty={
+            !loading && !error && paginatedSets.length === 0
+              ? 'No sets match your search.'
+              : undefined
+          }
         >
           <Grid container spacing={4}>
             {paginatedSets.map((set) => (

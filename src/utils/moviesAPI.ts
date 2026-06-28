@@ -14,10 +14,9 @@ export const fetchMovieGenres = async (): Promise<GenreMap> => {
   return getCached(
     'tmdb:genres',
     async () => {
-      const res = await tmdbGet<{ genres: { id: number; name: string }[] }>(
-        '/genre/movie/list',
-        { language: 'en-US' },
-      );
+      const res = await tmdbGet<{ genres: { id: number; name: string }[] }>('/genre/movie/list', {
+        language: 'en-US',
+      });
 
       const genreMap: GenreMap = {};
       res.data.genres.forEach((genre) => {
@@ -46,14 +45,11 @@ export const fetchPokemonMovies = async (): Promise<TmdbMovie[]> => {
   return getCached(
     'tmdb:pokemon-movies',
     async () => {
-      const first = await tmdbGet<{ total_pages: number; results: TmdbMovie[] }>(
-        '/search/movie',
-        {
-          query: 'Pokémon',
-          include_adult: false,
-          page: 1,
-        },
-      );
+      const first = await tmdbGet<{ total_pages: number; results: TmdbMovie[] }>('/search/movie', {
+        query: 'Pokémon',
+        include_adult: false,
+        page: 1,
+      });
 
       const pages = first.data.total_pages;
       let allMovies = [...first.data.results];
@@ -108,10 +104,9 @@ export const fetchMovieCast = async (movieId: number): Promise<TmdbCastMember[]>
   return getCached(
     `tmdb:cast:${movieId}`,
     async () => {
-      const res = await tmdbGet<{ cast: TmdbCastMember[] }>(
-        `/movie/${movieId}/credits`,
-        { language: 'en-US' },
-      );
+      const res = await tmdbGet<{ cast: TmdbCastMember[] }>(`/movie/${movieId}/credits`, {
+        language: 'en-US',
+      });
       return res.data.cast || [];
     },
     { ttlMs: CACHE_TTL.MEDIUM },

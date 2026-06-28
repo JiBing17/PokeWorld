@@ -37,27 +37,17 @@ function DetailRow({ label, value }: { label: string; value: string }) {
         py: 1.25,
       }}
     >
-      <Typography
-        variant="body2"
-        sx={{ color: 'text.secondary', fontWeight: 700, flexShrink: 0 }}
-      >
+      <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 700, flexShrink: 0 }}>
         {label}
       </Typography>
-      <Typography
-        variant="body2"
-        sx={{ fontWeight: 800, textAlign: 'right', lineHeight: 1.4 }}
-      >
+      <Typography variant="body2" sx={{ fontWeight: 800, textAlign: 'right', lineHeight: 1.4 }}>
         {value}
       </Typography>
     </Box>
   );
 }
 
-export default function TcgCardDetailDialog({
-  open,
-  card,
-  onClose,
-}: TcgCardDetailDialogProps) {
+export default function TcgCardDetailDialog({ open, card, onClose }: TcgCardDetailDialogProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -303,10 +293,7 @@ export default function TcgCardDetailDialog({
 
                   {priceBreakdown.map((entry, idx) => (
                     <React.Fragment key={entry.label}>
-                      <DetailRow
-                        label={entry.label}
-                        value={`$${entry.value.toFixed(2)}`}
-                      />
+                      <DetailRow label={entry.label} value={`$${entry.value.toFixed(2)}`} />
                       {idx < priceBreakdown.length - 1 && <Divider />}
                     </React.Fragment>
                   ))}

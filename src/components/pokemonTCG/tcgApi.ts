@@ -1,12 +1,7 @@
 import { CACHE_TTL, getCached } from '../../utils/apiCache';
 import { withRetry } from '../../utils/retryUtils';
 import { apiClient } from '../../utils/apiClient';
-import type {
-  TcgCard,
-  TcgCardQueryFilters,
-  TcgCardsResponse,
-  TcgSet,
-} from './tcgTypes';
+import type { TcgCard, TcgCardQueryFilters, TcgCardsResponse, TcgSet } from './tcgTypes';
 import { getMarketPrice } from './tcgPriceUtils';
 
 const CARDS_ENDPOINT = '/tcg/cards';
@@ -45,26 +40,17 @@ export async function fetchAllSets(signal?: AbortSignal): Promise<TcgSet[]> {
     'tcg:sets:all',
     async () => {
       const res = await tcgGet<{ data: TcgSet[] }>(SETS_ENDPOINT, undefined, signal);
-      return res.data.data.sort((a, b) =>
-        (b.releaseDate || '').localeCompare(a.releaseDate || ''),
-      );
+      return res.data.data.sort((a, b) => (b.releaseDate || '').localeCompare(a.releaseDate || ''));
     },
     { ttlMs: CACHE_TTL.LONG, persist: 'session' },
   );
 }
 
-export async function fetchSetById(
-  setId: string,
-  signal?: AbortSignal,
-): Promise<TcgSet | null> {
+export async function fetchSetById(setId: string, signal?: AbortSignal): Promise<TcgSet | null> {
   return getCached(
     `tcg:set:${setId}`,
     async () => {
-      const res = await tcgGet<{ data: TcgSet }>(
-        `${SETS_ENDPOINT}/${setId}`,
-        undefined,
-        signal,
-      );
+      const res = await tcgGet<{ data: TcgSet }>(`${SETS_ENDPOINT}/${setId}`, undefined, signal);
       return res.data?.data ?? null;
     },
     { ttlMs: CACHE_TTL.LONG },
@@ -117,13 +103,7 @@ export async function fetchAllMatchingCards(
       let page = 1;
 
       while (true) {
-        const { data, totalCount } = await fetchCardsPage(
-          query,
-          page,
-          pageSize,
-          undefined,
-          signal,
-        );
+        const { data, totalCount } = await fetchCardsPage(query, page, pageSize, undefined, signal);
         all = all.concat(data);
 
         const total = totalCount ?? 0;
@@ -138,10 +118,7 @@ export async function fetchAllMatchingCards(
   );
 }
 
-export async function fetchTopValuedCards(
-  query: string,
-  signal?: AbortSignal,
-): Promise<TcgCard[]> {
+export async function fetchTopValuedCards(query: string, signal?: AbortSignal): Promise<TcgCard[]> {
   return getCached(
     `tcg:top-valued:${query}`,
     async () => {

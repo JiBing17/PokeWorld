@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext';
-import {
-  fetchUserFavorites,
-  removeUserFavorite,
-  toggleUserFavorite,
-} from '../utils/favoritesApi';
+import { fetchUserFavorites, removeUserFavorite, toggleUserFavorite } from '../utils/favoritesApi';
 import type { FavoritesMap } from '../types';
 
 export function useFavorites() {
@@ -47,7 +43,7 @@ export function useFavorites() {
         console.error('Failed to update favorite:', error);
       }
     },
-    [favorites, requireAuth]
+    [favorites, requireAuth],
   );
 
   const removeFavorite = useCallback(
@@ -67,7 +63,7 @@ export function useFavorites() {
         console.error('Failed to remove favorite:', error);
       }
     },
-    [requireAuth]
+    [requireAuth],
   );
 
   return {

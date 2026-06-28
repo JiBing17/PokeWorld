@@ -13,10 +13,7 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function withRetry<T>(
-  fn: () => Promise<T>,
-  options: RetryOptions = {},
-): Promise<T> {
+export async function withRetry<T>(fn: () => Promise<T>, options: RetryOptions = {}): Promise<T> {
   const maxRetries = options.maxRetries ?? 2;
   const baseDelayMs = options.baseDelayMs ?? 400;
 
@@ -32,9 +29,7 @@ export async function withRetry<T>(
 
       const canRetry =
         attempt < maxRetries &&
-        (isAxiosError(error)
-          ? !error.response || isRetryableStatus(error.response.status)
-          : true);
+        (isAxiosError(error) ? !error.response || isRetryableStatus(error.response.status) : true);
 
       if (!canRetry) {
         throw error;
@@ -67,8 +62,5 @@ export function createAbortError(): Error {
 }
 
 export function isAbortError(error: unknown): boolean {
-  return (
-    axios.isCancel(error) ||
-    (error instanceof Error && error.name === 'AbortError')
-  );
+  return axios.isCancel(error) || (error instanceof Error && error.name === 'AbortError');
 }

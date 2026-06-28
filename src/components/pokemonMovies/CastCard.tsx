@@ -29,11 +29,7 @@ export default function CastCard({ member }: CastCardProps) {
     >
       <CardMedia
         component="img"
-        image={
-          member.profile_path
-            ? `${TMDB_POSTER_BASE_URL}${member.profile_path}`
-            : PLACEHOLDER
-        }
+        image={member.profile_path ? `${TMDB_POSTER_BASE_URL}${member.profile_path}` : PLACEHOLDER}
         alt={member.name}
         sx={{
           height: { xs: 250, md: 300 },
