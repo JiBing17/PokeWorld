@@ -12,7 +12,7 @@ if (!uri) {
 }
 
 // Create a new MongoClient instance with the connection URI
-const client = new MongoClient(uri);
+let client: MongoClient | null = null;
 
 let db: Db | undefined; // Initialize a variable to hold the database connection
 
@@ -22,6 +22,7 @@ export default async function connectToDatabase(): Promise<Db> {
   if (!db) {
     try {
       // Connect to the MongoDB server and select the targeted database
+      client = new MongoClient(uri as string);
       await client.connect();
       db = client.db('pokeAPI');
       console.log('Connected to MongoDB Atlas');
@@ -35,4 +36,12 @@ export default async function connectToDatabase(): Promise<Db> {
 
   // Return the database connection object
   return db;
+}
+
+export async function closeDatabase(): Promise<void> {
+  if (client) {
+    await client.close();
+    client = null;
+    db = undefined;
+  }
 }

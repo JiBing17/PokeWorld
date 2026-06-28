@@ -760,7 +760,11 @@ app.post('/api/chatbot', chatbotLimiter, async (req, res) => {
   }
 });
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+// Start the server when run directly (not during tests)
+export { app };
+
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}

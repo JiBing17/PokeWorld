@@ -35,7 +35,8 @@
     "prettier-check": "prettier --check \"src/**/*.{ts,tsx,css,json,md}\" \"pokemon-backend/**/*.ts\"",
     "prettier-format": "prettier --write \"src/**/*.{ts,tsx,css,json,md}\" \"pokemon-backend/**/*.ts\"",
     "check": "npm run typecheck && npm run eslint-check && npm run prettier-check",
-    "fix": "npm run prettier-format && npm run eslint-format && npm run typecheck"
+    "fix": "npm run prettier-format && npm run eslint-format && npm run typecheck",
+    "test:backend": "npm test --prefix pokemon-backend"
   },
   "eslintConfig": {
     "extends": [
