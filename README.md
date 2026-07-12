@@ -1,3 +1,7 @@
+## Live Demo
+
+**[https://pokeworld-lime.vercel.app/](https://pokeworld-lime.vercel.app/)**
+
 ## Overview
 This was a final project for a 8 week React course, organized by IEEE in collaboration with the College of Engineering. I wasn't able to complete this project at the time but decided to start over a year later to not only complete the project, but to go beyond and keep integrating it over time.
 
@@ -19,9 +23,15 @@ This project allows Pokémon fans to explore detailed information about over 1,0
 7. **Responsive Design:**
    - Utilized Material-UI, designed to provide positive user experience on a wide range of devices, from smartphones to desktops, with responsive design elements
 
-## Technologies Used
-- **Frontend:** React, Tailwind CSS, Material-UI
-- **Backend:** Node.js, Express.js
-- **Database:** MongoDB
-- **APIs:** PokeAPI
-- **Version Control:** Git, used to maintain the codebase
+## Tech Stack
+
+| Layer | Technologies |
+|-------|--------------|
+| **Frontend** | React, TypeScript, Material-UI, Tailwind CSS, React Router, Axios |
+| **Backend** | Node.js, Express, TypeScript |
+| **Database** | MongoDB Atlas |
+| **Auth** | JWT, bcrypt, Google OAuth |
+| **APIs** | PokeAPI, Pokémon TCG API, TMDB, Google Gemini |
+| **Hosting** | Vercel (frontend), Render (backend) |
+| **Testing & CI** | Vitest, Supertest, GitHub Actions |
+| **Tooling** | ESLint, Prettier, Git |
